@@ -6,6 +6,7 @@ use crate::config::ScheduleConfig;
 use crate::prices::Price;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(try_from = "u32")]
 pub struct Hour(u32);
 
 impl Hour {
@@ -19,6 +20,14 @@ impl Hour {
 
     pub fn as_u32(&self) -> u32 {
         self.0
+    }
+}
+
+impl TryFrom<u32> for Hour {
+    type Error = String;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        Self::new(value).ok_or(format!("Unable to convert {} to hour", value))
     }
 }
 
