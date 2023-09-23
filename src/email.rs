@@ -43,26 +43,31 @@ impl EmailClient {
     }
 
     fn send(&self, subject: String, body: String) -> Result<()> {
-        let Some(config) = &self.0 else { return Ok(()) };
+        if let Some(config) = &self.0 {
+            let message = Message::builder().from(config.from.parse()?);
+            let message = config
+                .to
+                .iter()
+                .fold(message, |acc, to| acc.to(to.parse().unwrap()));
+            let message = message
+                .subject(subject)
+                .header(ContentType::TEXT_PLAIN)
+                .body(body)?;
 
-        let message = Message::builder().from(config.from.parse()?);
-        let message = config
-            .to
-            .iter()
-            .fold(message, |acc, to| acc.to(to.parse().unwrap()));
-        let message = message
-            .subject(subject)
-            .header(ContentType::TEXT_PLAIN)
-            .body(body)?;
+            let transport = SmtpTransport::relay(&config.server)?
+                .credentials(Credentials::new(
+                    config.username.clone(),
+                    config.password.clone(),
+                ))
+                .build();
 
-        let transport = SmtpTransport::relay(&config.server)?
-            .credentials(Credentials::new(
-                config.username.clone(),
-                config.password.clone(),
-            ))
-            .build();
-
-        transport.send(&message)?;
+            transport.send(&message)?;
+        } else {
+            println!("Subject: {}", subject);
+            println!();
+            println!("{}", body);
+            println!("--------------------------------------------");
+        }
         Ok(())
     }
 }
