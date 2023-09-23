@@ -28,12 +28,12 @@ impl EmailClient {
                 .sum::<f64>()
                 / pin.on.len() as f64;
             body.push(format!(
-                "{}: {}\nAverage price: {}\n",
+                "{}: {}\nAverage price: {:.3}\n",
                 pin.name, ranges, avg_price
             ));
         }
         body.push(format!(
-            "Average price for day: {}",
+            "Average price for day: {:.3}",
             schedule.prices.iter().map(|price| price.price).sum::<f64>()
                 / schedule.prices.len() as f64
         ));

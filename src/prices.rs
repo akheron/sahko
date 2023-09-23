@@ -36,7 +36,7 @@ impl PriceClient {
                     Hour::new(hour.try_into()?).wrap_err("Too many price entries per day")?;
                 Ok(Price {
                     validity: start,
-                    price: price.price,
+                    price: price.price * 100.0, // € to cents
                 })
             })
             .collect()
@@ -52,7 +52,8 @@ impl PriceClient {
             Ok(Price {
                 validity: price.validity,
                 price: if price.price > 0.0 {
-                    price.price * VAT
+                    // Round to 3 decimal places
+                    (price.price * VAT * 1000.0).round() / 1000.0
                 } else {
                     price.price
                 },
