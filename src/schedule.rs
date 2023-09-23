@@ -37,13 +37,11 @@ impl Display for Hour {
     }
 }
 
-pub type Schedule = Vec<PinSchedule>;
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PinSchedule {
     pub name: String,
     pub pin: u8,
-    pub prices: Vec<Price>,
+    pub on: Vec<Hour>,
 }
 
 impl PinSchedule {
@@ -96,16 +94,34 @@ impl PinSchedule {
         Self {
             name: config.name.clone(),
             pin: config.pin,
-            prices: result,
+            on: result.into_iter().map(|price| price.validity).collect(),
         }
     }
 
     pub fn is_on(&self, now: &NaiveDateTime) -> bool {
         let now_hour = now.hour();
         if let Some(hour) = Hour::new(now_hour) {
-            self.prices.iter().any(|entry| entry.validity == hour)
+            self.on.iter().any(|entry| *entry == hour)
         } else {
             false
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Schedule {
+    pub pins: Vec<PinSchedule>,
+    pub prices: Vec<Price>,
+}
+
+impl Schedule {
+    pub fn compute(config: &[ScheduleConfig], prices: &[Price]) -> Self {
+        Self {
+            pins: config
+                .iter()
+                .map(|config| PinSchedule::compute(config, prices))
+                .collect(),
+            prices: prices.to_vec(),
         }
     }
 }
@@ -139,13 +155,7 @@ mod tests {
         let prices = make_prices(0.0);
 
         let schedule = PinSchedule::compute(&DEFAULT_CONFIG, &prices);
-        assert_eq!(
-            schedule.prices,
-            vec![Price {
-                validity: Hour(0),
-                price: 0.0
-            }]
-        );
+        assert_eq!(schedule.on, vec![Hour(0)]);
     }
 
     #[test]
@@ -158,23 +168,7 @@ mod tests {
         let prices = make_prices(0.0);
 
         let schedule = PinSchedule::compute(&config, &prices);
-        assert_eq!(
-            schedule.prices,
-            vec![
-                Price {
-                    validity: Hour(0),
-                    price: 0.0
-                },
-                Price {
-                    validity: Hour(1),
-                    price: 0.0
-                },
-                Price {
-                    validity: Hour(2),
-                    price: 0.0
-                },
-            ]
-        );
+        assert_eq!(schedule.on, vec![Hour(0), Hour(1), Hour(2)]);
     }
 
     #[test]
@@ -187,19 +181,7 @@ mod tests {
         let prices = make_prices(0.0);
 
         let schedule = PinSchedule::compute(&config, &prices);
-        assert_eq!(
-            schedule.prices,
-            vec![
-                Price {
-                    validity: Hour(12),
-                    price: 0.0
-                },
-                Price {
-                    validity: Hour(13),
-                    price: 0.0
-                },
-            ]
-        );
+        assert_eq!(schedule.on, vec![Hour(12), Hour(13)]);
     }
     #[test]
     fn test_takes_lowest_prices_under_low_limit() {
@@ -230,18 +212,6 @@ mod tests {
         prices.extend(make_prices(5.0).iter().skip(4));
 
         let schedule = PinSchedule::compute(&config, &prices);
-        assert_eq!(
-            schedule.prices,
-            vec![
-                Price {
-                    validity: Hour(1),
-                    price: -1.0
-                },
-                Price {
-                    validity: Hour(3),
-                    price: -2.0
-                },
-            ]
-        );
+        assert_eq!(schedule.on, vec![Hour(1), Hour(3)]);
     }
 }

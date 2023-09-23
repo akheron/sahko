@@ -1,14 +1,14 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Date {
+pub enum RelativeDate {
     Today,
     Tomorrow,
 }
 
-impl Date {
+impl RelativeDate {
     pub fn format(&self, format: &str) -> String {
         match self {
-            Date::Today => chrono::Local::now(),
-            Date::Tomorrow => chrono::Local::now() + chrono::Duration::days(1),
+            RelativeDate::Today => chrono::Local::now(),
+            RelativeDate::Tomorrow => chrono::Local::now() + chrono::Duration::days(1),
         }
         .format(format)
         .to_string()

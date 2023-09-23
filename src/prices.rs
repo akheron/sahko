@@ -1,4 +1,4 @@
-use crate::domain::Date;
+use crate::domain::RelativeDate;
 use crate::schedule::Hour;
 use eyre::{ContextCompat, Result, WrapErr};
 use serde::{Deserialize, Serialize};
@@ -42,10 +42,10 @@ impl PriceClient {
             .collect()
     }
 
-    pub fn get_prices_for_date(&self, date: Date) -> Result<Vec<Price>> {
+    pub fn get_prices_for_date(&self, date: RelativeDate) -> Result<Vec<Price>> {
         self.get_prices(match date {
-            Date::Today => "Today",
-            Date::Tomorrow => "DayForward",
+            RelativeDate::Today => "Today",
+            RelativeDate::Tomorrow => "DayForward",
         })?
         .iter()
         .map(|price| {

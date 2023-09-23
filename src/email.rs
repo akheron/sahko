@@ -4,9 +4,8 @@ use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 
 use crate::config::EmailConfig;
-use crate::domain::Date;
-use crate::prices::Price;
-use crate::schedule::PinSchedule;
+use crate::domain::RelativeDate;
+use crate::schedule::{Hour, Schedule};
 
 pub struct EmailClient(Option<EmailConfig>);
 
@@ -15,11 +14,12 @@ impl EmailClient {
         Self(config.clone())
     }
 
-    pub fn send_schedule(&self, date: Date, schedule: &[PinSchedule]) -> Result<()> {
+    pub fn send_schedule(&self, date: RelativeDate, schedule: &Schedule) -> Result<()> {
         let subject = format!("Schedule for {}", date.format("%Y-%m-%d"));
         let body = schedule
+            .pins
             .iter()
-            .map(|schedule| format!("{}: {}", schedule.name, to_ranges(&schedule.prices)))
+            .map(|schedule| format!("{}: {}", schedule.name, to_ranges(&schedule.on)))
             .collect::<Vec<_>>()
             .join("\n");
         self.send(subject, body)
@@ -67,19 +67,19 @@ impl EmailClient {
     }
 }
 
-/// Assumes that prices are ordered by validity
-fn to_ranges(prices: &[Price]) -> String {
-    if prices.is_empty() {
+/// Assumes that hours is ordered
+fn to_ranges(hours: &[Hour]) -> String {
+    if hours.is_empty() {
         return String::new();
     }
 
     let mut ranges = Vec::new();
 
-    let mut start = prices[0].validity.as_u32();
-    let mut end = prices[0].validity.as_u32();
+    let mut start = hours[0].as_u32();
+    let mut end = hours[0].as_u32();
 
-    for price in prices.iter().skip(1) {
-        let hour = price.validity.as_u32();
+    for entry in hours.iter().skip(1) {
+        let hour = entry.as_u32();
         if hour == end + 1 {
             end = hour;
         } else {
