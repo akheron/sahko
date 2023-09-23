@@ -16,13 +16,29 @@ impl EmailClient {
 
     pub fn send_schedule(&self, date: RelativeDate, schedule: &Schedule) -> Result<()> {
         let subject = format!("Schedule for {}", date.format("%Y-%m-%d"));
-        let body = schedule
-            .pins
-            .iter()
-            .map(|schedule| format!("{}: {}", schedule.name, to_ranges(&schedule.on)))
-            .collect::<Vec<_>>()
-            .join("\n");
-        self.send(subject, body)
+        let mut body: Vec<String> = Vec::new();
+
+        for pin in &schedule.pins {
+            let ranges = to_ranges(&pin.on);
+            let avg_price = schedule
+                .prices
+                .iter()
+                .filter(|price| pin.on.contains(&price.validity))
+                .map(|price| price.price)
+                .sum::<f64>()
+                / pin.on.len() as f64;
+            body.push(format!(
+                "{}: {}\nAverage price: {}\n",
+                pin.name, ranges, avg_price
+            ));
+        }
+        body.push(format!(
+            "Average price for day: {}",
+            schedule.prices.iter().map(|price| price.price).sum::<f64>()
+                / schedule.prices.len() as f64
+        ));
+
+        self.send(subject, body.join("\n"))
     }
 
     pub fn send_pin_state_change(&self, name: &str, pin: u8, state: bool) -> Result<()> {
