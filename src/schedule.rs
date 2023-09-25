@@ -63,7 +63,7 @@ impl PinSchedule {
         // Sort by price
         candidate_prices.sort_by(|a, b| a.price.partial_cmp(&b.price).unwrap());
 
-        // Take all prices under `low_limit`
+        // Take all prices less than or equal to `low_limit`
         let (mut result, mut others): (Vec<Price>, Vec<Price>) =
             candidate_prices.iter().copied().partition(|price| {
                 if let Some(limit) = config.low_limit {
