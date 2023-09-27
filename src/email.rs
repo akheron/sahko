@@ -15,7 +15,7 @@ impl EmailClient {
     }
 
     pub fn send_schedule(&self, date: RelativeDate, schedule: &Schedule) -> Result<()> {
-        let subject = format!("Schedule for {}", date.format("%Y-%m-%d"));
+        let subject = format!("Aikataulu {}", date.format("%d.%m.%Y"));
         let mut body: Vec<String> = Vec::new();
 
         for pin in &schedule.pins {
@@ -29,12 +29,12 @@ impl EmailClient {
                 .sum::<f64>()
                 / num_hours as f64;
             body.push(format!(
-                "{}: {} ({} h)\nAverage price: {:.3}\n",
+                "{}: {} ({} h)\nKeskihinta: {:.3}\n",
                 pin.name, ranges, num_hours, avg_price
             ));
         }
         body.push(format!(
-            "Average price for day: {:.3}",
+            "Vuorokauden keskihinta: {:.3}",
             schedule.prices.iter().map(|price| price.price).sum::<f64>()
                 / schedule.prices.len() as f64
         ));
@@ -43,18 +43,18 @@ impl EmailClient {
     }
 
     pub fn send_pin_state_change(&self, name: &str, pin: u8, state: bool) -> Result<()> {
-        let subject = format!("State change: {}", name);
+        let subject = format!("Tilamuutos: {}", name);
         let body = format!(
-            "{} (pin {}) is now {}",
+            "{} (pinni {}) on nyt {}",
             name,
             pin,
-            if state { "on" } else { "off" }
+            if state { "päällä" } else { "pois" }
         );
         self.send(subject, body)
     }
 
     pub fn send_error(&self, error: &Report) -> Result<()> {
-        let subject = "Unexpected error".to_string();
+        let subject = "Odottamaton virhe".to_string();
         let body = format!("{:?}", error);
         self.send(subject, body)
     }
