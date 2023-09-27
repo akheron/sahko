@@ -20,16 +20,17 @@ impl EmailClient {
 
         for pin in &schedule.pins {
             let ranges = to_ranges(&pin.on);
+            let num_hours = pin.on.len();
             let avg_price = schedule
                 .prices
                 .iter()
                 .filter(|price| pin.on.contains(&price.validity))
                 .map(|price| price.price)
                 .sum::<f64>()
-                / pin.on.len() as f64;
+                / num_hours as f64;
             body.push(format!(
-                "{}: {}\nAverage price: {:.3}\n",
-                pin.name, ranges, avg_price
+                "{}: {} ({} h)\nAverage price: {:.3}\n",
+                pin.name, ranges, num_hours, avg_price
             ));
         }
         body.push(format!(
