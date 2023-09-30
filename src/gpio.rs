@@ -1,46 +1,30 @@
-pub use platform::OutputPin;
+use eyre::Result;
+use gpio_cdev::{Chip, LineDirection, LineRequestFlags};
 
-#[cfg(target_os = "linux")]
-mod platform {
-    use eyre::Result;
-    use rppal::gpio;
+/// Returns indices of pins whose state was changed
+pub fn set_pin_states(pins: &[(u8, bool)]) -> Result<Vec<usize>> {
+    let mut changed = Vec::new();
 
-    pub struct OutputPin(gpio::OutputPin);
+    let mut chip = Chip::new("/dev/gpiochip0")?;
+    for (i, (pin, state)) in pins.iter().enumerate() {
+        let mut pin_changed = false;
+        let value = u8::from(*state);
 
-    impl OutputPin {
-        pub fn new(pin: u8) -> Result<Self> {
-            Ok(OutputPin(gpio::Gpio::new()?.get(pin)?.into_output()))
-        }
-
-        pub fn set(&mut self, state: bool) {
-            if state {
-                self.0.set_high();
-            } else {
-                self.0.set_low();
+        let line = chip.get_line(*pin as u32)?;
+        if line.info()?.direction() != LineDirection::Out {
+            pin_changed = true;
+        } else {
+            let line_handle = line.request(LineRequestFlags::empty(), 0, "sahko")?;
+            let current_value = line_handle.get_value()?;
+            if current_value != value {
+                pin_changed = true;
             }
         }
-        pub fn state(&self) -> bool {
-            self.0.is_set_high()
+        line.request(LineRequestFlags::OUTPUT, value, "sahko")?;
+        if pin_changed {
+            changed.push(i);
         }
     }
-}
 
-#[cfg(not(target_os = "linux"))]
-mod platform {
-    use eyre::Result;
-    pub struct OutputPin(u8, bool);
-
-    impl OutputPin {
-        pub fn new(pin: u8) -> Result<Self> {
-            Ok(OutputPin(pin, false))
-        }
-
-        pub fn set(&mut self, state: bool) {
-            println!("PIN {} => {}", self.0, if state { "HIGH" } else { "LOW" });
-            self.1 = state;
-        }
-        pub fn state(&self) -> bool {
-            self.1
-        }
-    }
+    Ok(changed)
 }
