@@ -67,9 +67,9 @@ impl EmailClient {
                 .iter()
                 .fold(message, |acc, to| acc.to(to.parse().unwrap()));
             let message = message
-                .subject(subject)
+                .subject(subject.clone())
                 .header(ContentType::TEXT_PLAIN)
-                .body(body)?;
+                .body(body.clone())?;
 
             let transport = SmtpTransport::relay(&config.server)?
                 .credentials(Credentials::new(
@@ -79,12 +79,11 @@ impl EmailClient {
                 .build();
 
             transport.send(&message)?;
-        } else {
-            println!("Subject: {}", subject);
-            println!();
-            println!("{}", body);
-            println!("--------------------------------------------");
         }
+        println!("Subject: {}", subject);
+        println!();
+        println!("{}", body);
+        println!("--------------------------------------------");
         Ok(())
     }
 }
