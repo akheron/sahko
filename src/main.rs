@@ -14,7 +14,7 @@ use eyre::Result;
 use crate::config::{Config, ScheduleConfig};
 use crate::domain::RelativeDate;
 use crate::email::EmailClient;
-use crate::gpio::set_pin_states;
+use crate::gpio::{set_pin_states, StateChange};
 use crate::prices::PriceClient;
 use crate::schedule::Schedule;
 
@@ -54,11 +54,22 @@ fn run(config: &[ScheduleConfig], email_client: &EmailClient) -> Result<()> {
         .map(|pin_schedule| (pin_schedule.pin, pin_schedule.is_on(&now)))
         .collect::<Vec<_>>();
 
-    let changed = set_pin_states(&expected_states)?;
-    for i in changed {
-        let pin_schedule = &schedule.pins[i];
-        let (_, state) = expected_states[i];
-        let _ = email_client.send_pin_state_change(&pin_schedule.name, pin_schedule.pin, state);
+    match set_pin_states(&expected_states)? {
+        StateChange::None => (),
+        StateChange::Change {
+            changed_pins,
+            powered_on,
+        } => {
+            let changes = changed_pins
+                .into_iter()
+                .map(|i| {
+                    let pin_schedule = &schedule.pins[i];
+                    let (_, state) = expected_states[i];
+                    (&pin_schedule.name as &str, pin_schedule.pin, state)
+                })
+                .collect::<Vec<_>>();
+            email_client.send_pin_state_change(&changes, powered_on)?;
+        }
     }
 
     Ok(())

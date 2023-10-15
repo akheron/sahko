@@ -42,14 +42,23 @@ impl EmailClient {
         self.send(subject, body.join("\n"))
     }
 
-    pub fn send_pin_state_change(&self, name: &str, pin: u8, state: bool) -> Result<()> {
-        let subject = format!("Tilamuutos: {}", name);
-        let body = format!(
-            "{} (pinni {}) on nyt {}",
-            name,
-            pin,
-            if state { "päällä" } else { "pois" }
+    pub fn send_pin_state_change(&self, pins: &[(&str, u8, bool)], powered_on: bool) -> Result<()> {
+        let subject = format!(
+            "Tilamuutos{}",
+            if powered_on { " (virta kytketty)" } else { "" }
         );
+        let body = pins
+            .iter()
+            .map(|(name, pin, state)| {
+                format!(
+                    "{} (pinni {}): {}",
+                    name,
+                    pin,
+                    if *state { "päällä" } else { "pois" }
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
         self.send(subject, body)
     }
 
