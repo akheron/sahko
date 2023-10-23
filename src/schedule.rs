@@ -65,11 +65,10 @@ pub struct PinSchedule {
 
 impl PinSchedule {
     pub fn compute(config: &ScheduleConfig, prices: &[Price]) -> Self {
-        // Filter out prices outside `between` or over `high_limit`
+        // Filter out prices over `high_limit`
         let mut candidate_prices: Vec<Price> = prices
             .iter()
             .copied()
-            .filter(|price| config.between.contains(&price.validity))
             .filter(|price| {
                 if let Some(limit) = config.high_limit {
                     price.price < limit
@@ -182,7 +181,6 @@ mod tests {
     const DEFAULT_CONFIG: ScheduleConfig = ScheduleConfig {
         name: String::new(),
         pin: 0,
-        between: Hour(0)..=Hour(23),
         low_limit: None,
         high_limit: None,
         min_on_hours: 1,
@@ -218,19 +216,6 @@ mod tests {
 
         let schedule = PinSchedule::compute(&config, &prices);
         assert_eq!(schedule.on, vec![Hour(0), Hour(1), Hour(2)]);
-    }
-
-    #[test]
-    fn test_between() {
-        let config = ScheduleConfig {
-            between: Hour(12)..=Hour(15),
-            min_on_hours: 2,
-            ..DEFAULT_CONFIG
-        };
-        let prices = make_prices(0.0);
-
-        let schedule = PinSchedule::compute(&config, &prices);
-        assert_eq!(schedule.on, vec![Hour(12), Hour(13)]);
     }
 
     #[test]

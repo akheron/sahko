@@ -1,8 +1,6 @@
-use crate::schedule::Hour;
 use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::ops::RangeInclusive;
 use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -12,9 +10,6 @@ pub struct ScheduleConfig {
 
     /// Pin to control
     pub pin: u8,
-
-    /// Time range during which to schedule the `on_duration` period
-    pub between: RangeInclusive<Hour>,
 
     /// Always on (up to `max_on_hours`) if price is under this limit
     pub low_limit: Option<f64>,
