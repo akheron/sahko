@@ -18,8 +18,27 @@ impl Hour {
         }
     }
 
+    pub fn next(&self) -> Option<Self> {
+        Self::new(self.0 + 1)
+    }
+
     pub fn as_u32(&self) -> u32 {
         self.0
+    }
+}
+
+trait HourRangeExt {
+    fn length(&self) -> i32;
+    fn contains(&self, hour: Hour) -> bool;
+}
+
+impl HourRangeExt for (Hour, Hour) {
+    fn length(&self) -> i32 {
+        self.1.as_u32() as i32 - self.0.as_u32() as i32 + 1
+    }
+
+    fn contains(&self, hour: Hour) -> bool {
+        self.0.as_u32() <= hour.as_u32() && hour.as_u32() <= self.1.as_u32()
     }
 }
 
@@ -91,6 +110,35 @@ impl PinSchedule {
         // Sort back to time order
         result.sort_by_key(|price| price.validity);
 
+        // Remove ranges that occur in the middle of the day and are shorter than `min_consecutive_on_hours`
+        if let Some(min_consecutive_on_hours) = config.min_consecutive_on_hours {
+            let mut ranges: Vec<(Hour, Hour)> = Vec::new();
+            for (i, price) in result.iter().enumerate() {
+                if i == 0 {
+                    ranges.push((price.validity, price.validity));
+                } else {
+                    let (_, end) = ranges.last_mut().unwrap();
+                    if let Some(next) = end.next() {
+                        if price.validity == next {
+                            *end = price.validity;
+                        } else {
+                            ranges.push((price.validity, price.validity));
+                        }
+                    }
+                }
+            }
+            let too_short = ranges
+                .into_iter()
+                .filter(|(start, end)| {
+                    start.as_u32() != 0
+                        && end.as_u32() != 23
+                        && (*start, *end).length() < min_consecutive_on_hours as i32
+                })
+                .collect::<Vec<_>>();
+
+            result.retain(|price| !too_short.iter().any(|range| range.contains(price.validity)));
+        }
+
         Self {
             name: config.name.clone(),
             pin: config.pin,
@@ -139,6 +187,7 @@ mod tests {
         high_limit: None,
         min_on_hours: 1,
         max_on_hours: 1,
+        min_consecutive_on_hours: None,
     };
 
     fn make_prices(price: f64) -> Vec<Price> {
@@ -183,6 +232,7 @@ mod tests {
         let schedule = PinSchedule::compute(&config, &prices);
         assert_eq!(schedule.on, vec![Hour(12), Hour(13)]);
     }
+
     #[test]
     fn test_takes_lowest_prices_under_low_limit() {
         let config = ScheduleConfig {
@@ -213,5 +263,47 @@ mod tests {
 
         let schedule = PinSchedule::compute(&config, &prices);
         assert_eq!(schedule.on, vec![Hour(1), Hour(3)]);
+    }
+
+    #[test]
+    fn does_not_include_too_short_ranges() {
+        let config = ScheduleConfig {
+            low_limit: Some(0.0),
+            high_limit: Some(1.0),
+            min_on_hours: 3,
+            min_consecutive_on_hours: Some(2),
+            ..DEFAULT_CONFIG
+        };
+
+        let mut prices = vec![
+            Price {
+                validity: Hour(0),
+                price: 5.0,
+            },
+            // Too short, not kept --->
+            Price {
+                validity: Hour(1),
+                price: 0.5,
+            },
+            // <---
+            Price {
+                validity: Hour(2),
+                price: 5.0,
+            },
+            // Long enough, kept --->
+            Price {
+                validity: Hour(3),
+                price: 0.5,
+            },
+            Price {
+                validity: Hour(4),
+                price: 0.5,
+            },
+            // <---
+        ];
+        prices.extend(make_prices(5.0).iter().skip(5));
+
+        let schedule = PinSchedule::compute(&config, &prices);
+        assert_eq!(schedule.on, vec![Hour(3), Hour(4)]);
     }
 }

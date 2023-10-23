@@ -27,6 +27,9 @@ pub struct ScheduleConfig {
 
     /// Maximum duration to keep the switch on even if the price is under `low_limit`
     pub max_on_hours: u32,
+
+    /// Minimum consecutive hours to keep the switch on in the middle of the day
+    pub min_consecutive_on_hours: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
