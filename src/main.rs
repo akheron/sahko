@@ -18,7 +18,7 @@ use crate::gpio::{set_pin_states, StateChange};
 use crate::prices::PriceClient;
 use crate::schedule::Schedule;
 
-const MAKE_TOMORROWS_SCHEDULE: u32 = 17; // 17:00
+const MAKE_TOMORROWS_SCHEDULE: u32 = 16; // 16:00
 
 fn main() -> Result<()> {
     let config = Config::load("config.json")?;
