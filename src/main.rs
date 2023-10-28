@@ -34,7 +34,7 @@ fn main() -> Result<()> {
 
 fn run(config: &[ScheduleConfig], email_client: &EmailClient) -> Result<()> {
     let price_client = PriceClient::new();
-    let now = chrono::Local::now().naive_local();
+    let now = chrono::Local::now();
 
     let (schedule, created) = ensure_schedule(RelativeDate::Today, &price_client, config)?;
     if created {

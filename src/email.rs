@@ -1,3 +1,4 @@
+use chrono::{DateTime, Duration, FixedOffset, Timelike};
 use eyre::{Report, Result};
 use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
@@ -5,7 +6,7 @@ use lettre::{Message, SmtpTransport, Transport};
 
 use crate::config::EmailConfig;
 use crate::domain::RelativeDate;
-use crate::schedule::{Hour, Schedule};
+use crate::schedule::Schedule;
 
 pub struct EmailClient(Option<EmailConfig>);
 
@@ -19,12 +20,12 @@ impl EmailClient {
         let mut body: Vec<String> = Vec::new();
 
         for pin in &schedule.pins {
-            let ranges = to_ranges(&pin.on);
-            let num_hours = pin.on.len();
+            let ranges = to_ranges(&pin.on_hours);
+            let num_hours = pin.on_hours.len();
             let avg_price = schedule
                 .prices
                 .iter()
-                .filter(|price| pin.on.contains(&price.validity))
+                .filter(|price| pin.on_hours.contains(&price.validity))
                 .map(|price| price.price)
                 .sum::<f64>()
                 / num_hours as f64;
@@ -104,27 +105,27 @@ impl EmailClient {
 }
 
 /// Assumes that hours is ordered
-fn to_ranges(hours: &[Hour]) -> String {
+fn to_ranges(hours: &[DateTime<FixedOffset>]) -> String {
     if hours.is_empty() {
         return String::new();
     }
 
     let mut ranges = Vec::new();
 
-    let mut start = hours[0].as_u32();
-    let mut end = hours[0].as_u32();
+    let mut start = hours[0];
+    let mut end = hours[0];
 
     for entry in hours.iter().skip(1) {
-        let hour = entry.as_u32();
-        if hour == end + 1 {
+        let hour = *entry;
+        if hour == end + Duration::hours(1) {
             end = hour;
         } else {
-            ranges.push(format!("{:02}:00-{:02}:59", start, end));
+            ranges.push(format!("{:02}:00-{:02}:59", start.hour(), end.hour()));
             start = hour;
             end = hour;
         }
     }
 
-    ranges.push(format!("{:02}:00-{:02}:59", start, end));
+    ranges.push(format!("{:02}:00-{:02}:59", start.hour(), end.hour()));
     ranges.join(", ")
 }

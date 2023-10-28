@@ -1,66 +1,14 @@
-use chrono::{NaiveDateTime, Timelike};
+use chrono::{DateTime, Duration, FixedOffset, Local, Timelike};
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
 
 use crate::config::ScheduleConfig;
 use crate::prices::Price;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(try_from = "u32")]
-pub struct Hour(u32);
-
-impl Hour {
-    pub fn new(hour: u32) -> Option<Self> {
-        if hour < 24 {
-            Some(Self(hour))
-        } else {
-            None
-        }
-    }
-
-    pub fn next(&self) -> Option<Self> {
-        Self::new(self.0 + 1)
-    }
-
-    pub fn as_u32(&self) -> u32 {
-        self.0
-    }
-}
-
-trait HourRangeExt {
-    fn length(&self) -> i32;
-    fn contains(&self, hour: Hour) -> bool;
-}
-
-impl HourRangeExt for (Hour, Hour) {
-    fn length(&self) -> i32 {
-        self.1.as_u32() as i32 - self.0.as_u32() as i32 + 1
-    }
-
-    fn contains(&self, hour: Hour) -> bool {
-        self.0.as_u32() <= hour.as_u32() && hour.as_u32() <= self.1.as_u32()
-    }
-}
-
-impl TryFrom<u32> for Hour {
-    type Error = String;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Self::new(value).ok_or(format!("Unable to convert {} to hour", value))
-    }
-}
-
-impl Display for Hour {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:02}:00", self.0)
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PinSchedule {
     pub name: String,
     pub pin: u8,
-    pub on: Vec<Hour>,
+    pub on_hours: Vec<DateTime<FixedOffset>>,
 }
 
 impl PinSchedule {
@@ -111,47 +59,47 @@ impl PinSchedule {
 
         // Remove ranges that occur in the middle of the day and are shorter than `min_consecutive_on_hours`
         if let Some(min_consecutive_on_hours) = config.min_consecutive_on_hours {
-            let mut ranges: Vec<(Hour, Hour)> = Vec::new();
+            let mut ranges: Vec<(DateTime<FixedOffset>, DateTime<FixedOffset>)> = Vec::new();
             for (i, price) in result.iter().enumerate() {
                 if i == 0 {
                     ranges.push((price.validity, price.validity));
                 } else {
                     let (_, end) = ranges.last_mut().unwrap();
-                    if let Some(next) = end.next() {
-                        if price.validity == next {
-                            *end = price.validity;
-                        } else {
-                            ranges.push((price.validity, price.validity));
-                        }
+                    if price.validity == *end + Duration::hours(1) {
+                        *end = price.validity;
+                    } else {
+                        ranges.push((price.validity, price.validity));
                     }
                 }
             }
             let too_short = ranges
                 .into_iter()
                 .filter(|(start, end)| {
-                    start.as_u32() != 0
-                        && end.as_u32() != 23
-                        && (*start, *end).length() < min_consecutive_on_hours as i32
+                    start.hour() != 0
+                        && end.hour() != 23
+                        // + 1 because we use starts of hours but the length of an hour is 1 hour
+                        && (*end - *start).num_hours() + 1 < min_consecutive_on_hours as i64
                 })
                 .collect::<Vec<_>>();
 
-            result.retain(|price| !too_short.iter().any(|range| range.contains(price.validity)));
+            result.retain(|price| {
+                !too_short
+                    .iter()
+                    .any(|(start, end)| *start <= price.validity && price.validity <= *end)
+            });
         }
 
         Self {
             name: config.name.clone(),
             pin: config.pin,
-            on: result.into_iter().map(|price| price.validity).collect(),
+            on_hours: result.into_iter().map(|price| price.validity).collect(),
         }
     }
 
-    pub fn is_on(&self, now: &NaiveDateTime) -> bool {
-        let now_hour = now.hour();
-        if let Some(hour) = Hour::new(now_hour) {
-            self.on.iter().any(|entry| *entry == hour)
-        } else {
-            false
-        }
+    pub fn is_on(&self, now: &DateTime<Local>) -> bool {
+        self.on_hours
+            .iter()
+            .any(|entry| *entry <= *now && *now < *entry + Duration::hours(1))
     }
 }
 
@@ -176,7 +124,9 @@ impl Schedule {
 #[cfg(test)]
 mod tests {
     use crate::prices::Price;
-    use crate::schedule::{Hour, PinSchedule, ScheduleConfig};
+    use crate::schedule::{PinSchedule, ScheduleConfig};
+    use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
+    use lazy_static::lazy_static;
 
     const DEFAULT_CONFIG: ScheduleConfig = ScheduleConfig {
         name: String::new(),
@@ -188,10 +138,23 @@ mod tests {
         min_consecutive_on_hours: None,
     };
 
+    lazy_static! {
+        static ref TZ: FixedOffset = FixedOffset::east_opt(2 * 3600).unwrap();
+        static ref TODAY: NaiveDate = NaiveDate::from_ymd_opt(2021, 1, 1).unwrap();
+    }
+
+    fn hour_dt(hour: u32) -> DateTime<FixedOffset> {
+        TZ.from_local_datetime(&NaiveDateTime::new(
+            *TODAY,
+            NaiveTime::from_hms_opt(hour, 0, 0).unwrap(),
+        ))
+        .unwrap()
+    }
+
     fn make_prices(price: f64) -> Vec<Price> {
         (0..=23)
             .map(|hour| Price {
-                validity: Hour::new(hour).unwrap(),
+                validity: hour_dt(hour),
                 price,
             })
             .collect()
@@ -202,7 +165,7 @@ mod tests {
         let prices = make_prices(0.0);
 
         let schedule = PinSchedule::compute(&DEFAULT_CONFIG, &prices);
-        assert_eq!(schedule.on, vec![Hour(0)]);
+        assert_eq!(schedule.on_hours, vec![hour_dt(0)]);
     }
 
     #[test]
@@ -215,7 +178,7 @@ mod tests {
         let prices = make_prices(0.0);
 
         let schedule = PinSchedule::compute(&config, &prices);
-        assert_eq!(schedule.on, vec![Hour(0), Hour(1), Hour(2)]);
+        assert_eq!(schedule.on_hours, vec![hour_dt(0), hour_dt(1), hour_dt(2)]);
     }
 
     #[test]
@@ -228,26 +191,26 @@ mod tests {
         };
         let mut prices = vec![
             Price {
-                validity: Hour(0),
+                validity: hour_dt(0),
                 price: 1.5,
             },
             Price {
-                validity: Hour(1),
+                validity: hour_dt(1),
                 price: -1.0,
             },
             Price {
-                validity: Hour(2),
+                validity: hour_dt(2),
                 price: 1.0,
             },
             Price {
-                validity: Hour(3),
+                validity: hour_dt(3),
                 price: -2.0,
             },
         ];
         prices.extend(make_prices(5.0).iter().skip(4));
 
         let schedule = PinSchedule::compute(&config, &prices);
-        assert_eq!(schedule.on, vec![Hour(1), Hour(3)]);
+        assert_eq!(schedule.on_hours, vec![hour_dt(1), hour_dt(3)]);
     }
 
     #[test]
@@ -262,26 +225,26 @@ mod tests {
 
         let mut prices = vec![
             Price {
-                validity: Hour(0),
+                validity: hour_dt(0),
                 price: 5.0,
             },
             // Too short, not kept --->
             Price {
-                validity: Hour(1),
+                validity: hour_dt(1),
                 price: 0.5,
             },
             // <---
             Price {
-                validity: Hour(2),
+                validity: hour_dt(2),
                 price: 5.0,
             },
             // Long enough, kept --->
             Price {
-                validity: Hour(3),
+                validity: hour_dt(3),
                 price: 0.5,
             },
             Price {
-                validity: Hour(4),
+                validity: hour_dt(4),
                 price: 0.5,
             },
             // <---
@@ -289,6 +252,6 @@ mod tests {
         prices.extend(make_prices(5.0).iter().skip(5));
 
         let schedule = PinSchedule::compute(&config, &prices);
-        assert_eq!(schedule.on, vec![Hour(3), Hour(4)]);
+        assert_eq!(schedule.on_hours, vec![hour_dt(3), hour_dt(4)]);
     }
 }

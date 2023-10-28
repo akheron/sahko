@@ -1,11 +1,11 @@
 use crate::domain::RelativeDate;
-use crate::schedule::Hour;
-use eyre::{ContextCompat, Result, WrapErr};
+use chrono::{DateTime, FixedOffset};
+use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Price {
-    pub validity: Hour,
+    pub validity: DateTime<FixedOffset>,
     pub price: f64,
 }
 
@@ -30,12 +30,9 @@ impl PriceClient {
             .json::<Vec<SpotPrice>>()
             .wrap_err_with(|| format!("Unable to parse spot prices from {}", url))?
             .iter()
-            .enumerate()
-            .map(|(hour, price)| {
-                let start =
-                    Hour::new(hour.try_into()?).wrap_err("Too many price entries per day")?;
+            .map(|price| {
                 Ok(Price {
-                    validity: start,
+                    validity: price.date_time,
                     price: price.price * 100.0, // € to cents
                 })
             })
@@ -73,6 +70,9 @@ const VAT: f64 = 1.24;
 
 #[derive(Deserialize, Debug)]
 struct SpotPrice {
+    #[serde(rename = "DateTime")]
+    date_time: DateTime<FixedOffset>,
+
     #[serde(rename = "PriceNoTax")]
     price: f64,
 }
