@@ -62,6 +62,12 @@ impl EmailClient {
         self.send(subject, body)
     }
 
+    pub fn send_error_making_tomorrows_schedule(&self, error: &Report) -> Result<()> {
+        let subject = "Huomisen aikataulun laskeminen ei onnistunut".to_string();
+        let body = format!("{:?}", error);
+        self.send(subject, body)
+    }
+
     pub fn send_error(&self, error: &Report) -> Result<()> {
         let subject = "Odottamaton virhe".to_string();
         let body = format!("{:?}", error);

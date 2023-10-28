@@ -42,9 +42,15 @@ fn run(config: &[ScheduleConfig], email_client: &EmailClient) -> Result<()> {
     }
 
     if now.time().hour() >= MAKE_TOMORROWS_SCHEDULE {
-        let (schedule, created) = ensure_schedule(RelativeDate::Tomorrow, &price_client, config)?;
-        if created {
-            let _ = email_client.send_schedule(RelativeDate::Tomorrow, &schedule);
+        match ensure_schedule(RelativeDate::Tomorrow, &price_client, config) {
+            Ok((schedule, created)) => {
+                if created {
+                    let _ = email_client.send_schedule(RelativeDate::Tomorrow, &schedule);
+                }
+            }
+            Err(error) => {
+                let _ = email_client.send_error_making_tomorrows_schedule(&error);
+            }
         }
     }
 
