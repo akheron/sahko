@@ -71,10 +71,6 @@ Example config:
     {
       "name": "Heater",
       "pin": 17,
-      "between": {
-        "start": 0,
-        "end": 23
-      },
       "low_limit": 2.0,
       "high_limit": 8.0,
       "min_on_hours": 4,
@@ -98,14 +94,12 @@ The config file contains a list of schedules, one for each pin you want to contr
 
 - `name`: Name of the schedule, used only for display purposes
 - `pin`: GPIO pin (Broadcom numbering)
-- `between`: Time range outside which the pin is always off
-    - `start`: Start hour of the time range, inclusive
-    - `end`: End hour of the time range, inclusive
 - `low_limit` (optional): Electricity price limit at or below which the pin is always on, up to `max_on_hours` per day
 - `high_limit` (optional): Electricity price limit above which the pin is always off
 - `min_on_hours`: Minimum number of hours the pin should be on per day, when the price is between `low_limit` and
   `high_limit`
 - `max_on_hours`: Maximum number of hours the device should be on per day, when the price is below `low_limit`
+- `min_consecutive_hours`: Minimum consecutive hours to keep the switch on in the middle of the day
 
 ### Email
 
