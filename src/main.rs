@@ -6,8 +6,10 @@ mod prices;
 mod schedule;
 
 use chrono::Timelike;
+use pico_args::Arguments;
 use std::fs::{create_dir_all, File};
 use std::io::Write;
+use std::path::PathBuf;
 
 use eyre::Result;
 
@@ -21,15 +23,34 @@ use crate::schedule::Schedule;
 const MAKE_TOMORROWS_SCHEDULE: u32 = 16; // 16:00
 
 fn main() -> Result<()> {
+    let mut args = Arguments::from_env();
+
     let config = Config::load("config.json")?;
     let email_client = EmailClient::new(&config.email);
 
-    if let Err(error) = run(&config.schedules, &email_client) {
+    if args.contains(["-h", "--help"]) {
+        let bin = PathBuf::from(std::env::args_os().next().unwrap_or_default());
+        let bin = bin.file_name().unwrap_or_default().to_string_lossy();
+        println!("Usage: {bin} [--send-schedules]");
+        return Ok(());
+    }
+    if args.contains("--send-schedules") {
+        send_schedules(&config, &email_client)
+    } else if let Err(error) = run(&config.schedules, &email_client) {
         let _ = email_client.send_error(&error);
         Err(error)
     } else {
         Ok(())
     }
+}
+
+fn send_schedules(config: &Config, email_client: &EmailClient) -> Result<()> {
+    let price_client = PriceClient::new();
+    for date in [RelativeDate::Today, RelativeDate::Tomorrow] {
+        let (schedule, _) = ensure_schedule(date, &price_client, &config.schedules)?;
+        let _ = email_client.send_schedule(date, &schedule);
+    }
+    Ok(())
 }
 
 fn run(config: &[ScheduleConfig], email_client: &EmailClient) -> Result<()> {
