@@ -21,23 +21,18 @@ impl EmailClient {
 
         for pin in &schedule.pins {
             let ranges = to_ranges(&pin.on_hours);
-            let num_hours = pin.on_hours.len();
-            let avg_price = schedule
-                .prices
-                .iter()
-                .filter(|price| pin.on_hours.contains(&price.validity))
-                .map(|price| price.price)
-                .sum::<f64>()
-                / num_hours as f64;
             body.push(format!(
-                "{}: {} ({} h)\nKeskihinta: {:.3}\n",
-                pin.name, ranges, num_hours, avg_price
+                "{}: {} ({} h)\nKeskihinta: päällä {:.3}, pois {:.3}\n",
+                pin.name,
+                ranges,
+                pin.on_hours.len(),
+                pin.avg_price(&schedule.prices, true),
+                pin.avg_price(&schedule.prices, false)
             ));
         }
         body.push(format!(
             "Vuorokauden keskihinta: {:.3}",
-            schedule.prices.iter().map(|price| price.price).sum::<f64>()
-                / schedule.prices.len() as f64
+            schedule.avg_price()
         ));
 
         self.send(subject, body.join("\n"))

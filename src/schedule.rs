@@ -101,6 +101,27 @@ impl PinSchedule {
             .iter()
             .any(|entry| *entry <= *now && *now < *entry + Duration::hours(1))
     }
+
+    pub fn avg_price(&self, prices: &[Price], on: bool) -> f64 {
+        let num_hours = if on {
+            self.on_hours.len()
+        } else {
+            24 - self.on_hours.len()
+        };
+        prices
+            .iter()
+            .filter(|price| {
+                let is_on = self.on_hours.contains(&price.validity);
+                if on {
+                    is_on
+                } else {
+                    !is_on
+                }
+            })
+            .map(|price| price.price)
+            .sum::<f64>()
+            / num_hours as f64
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -118,6 +139,10 @@ impl Schedule {
                 .collect(),
             prices: prices.to_vec(),
         }
+    }
+
+    pub fn avg_price(&self) -> f64 {
+        self.prices.iter().map(|price| price.price).sum::<f64>() / self.prices.len() as f64
     }
 }
 
