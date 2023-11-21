@@ -71,7 +71,7 @@ fn run(config: &[ScheduleConfig], email_client: &EmailClient) -> Result<()> {
                 .map(|i| {
                     let pin_schedule = &schedule.pins[i];
                     let (_, state) = expected_states[i];
-                    (&pin_schedule.name as &str, pin_schedule.pin, state)
+                    (&pin_schedule.name as &str, state)
                 })
                 .collect::<Vec<_>>();
             email_client.send_pin_state_change(&changes, powered_on)?;
