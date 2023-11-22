@@ -108,19 +108,23 @@ impl PinSchedule {
         } else {
             24 - self.on_hours.len()
         };
-        prices
-            .iter()
-            .filter(|price| {
-                let is_on = self.on_hours.contains(&price.validity);
-                if on {
-                    is_on
-                } else {
-                    !is_on
-                }
-            })
-            .map(|price| price.price)
-            .sum::<f64>()
-            / num_hours as f64
+        if num_hours == 0 {
+            0.0
+        } else {
+            prices
+                .iter()
+                .filter(|price| {
+                    let is_on = self.on_hours.contains(&price.validity);
+                    if on {
+                        is_on
+                    } else {
+                        !is_on
+                    }
+                })
+                .map(|price| price.price)
+                .sum::<f64>()
+                / num_hours as f64
+        }
     }
 }
 

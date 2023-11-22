@@ -20,15 +20,19 @@ impl EmailClient {
         let mut body: Vec<String> = Vec::new();
 
         for pin in &schedule.pins {
-            let ranges = to_ranges(&pin.on_hours);
-            body.push(format!(
-                "{}: {} ({} h)\nKeskihinta: päällä {:.3}, pois {:.3}\n",
-                pin.name,
-                ranges,
-                pin.on_hours.len(),
-                pin.avg_price(&schedule.prices, true),
-                pin.avg_price(&schedule.prices, false)
-            ));
+            if pin.on_hours.is_empty() {
+                body.push(format!("{}: ei päälläoloaikoja", pin.name));
+            } else {
+                let ranges = to_ranges(&pin.on_hours);
+                body.push(format!(
+                    "{}: {} ({} h)\nKeskihinta: päällä {:.3}, pois {:.3}\n",
+                    pin.name,
+                    ranges,
+                    pin.on_hours.len(),
+                    pin.avg_price(&schedule.prices, true),
+                    pin.avg_price(&schedule.prices, false)
+                ));
+            }
         }
         body.push(format!(
             "Vuorokauden keskihinta: {:.3}",
