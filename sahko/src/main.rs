@@ -8,6 +8,7 @@ mod schedule;
 use chrono::Timelike;
 use pico_args::Arguments;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use eyre::Result;
 
@@ -47,6 +48,7 @@ fn send_schedules(config: &Config, email_client: &EmailClient) -> Result<()> {
     for date in [RelativeDate::Today, RelativeDate::Tomorrow] {
         let (schedule, _) = ensure_schedule(date, &price_client, &config.schedules)?;
         let _ = email_client.send_schedule(date, &schedule);
+        std::thread::sleep(Duration::from_secs(1));
     }
     Ok(())
 }
