@@ -7,8 +7,6 @@ mod schedule;
 
 use chrono::Timelike;
 use pico_args::Arguments;
-use std::fs::{create_dir_all, File};
-use std::io::Write;
 use std::path::PathBuf;
 
 use eyre::Result;
@@ -107,33 +105,12 @@ fn ensure_schedule(
     client: &PriceClient,
     config: &[ScheduleConfig],
 ) -> Result<(Schedule, bool)> {
-    if let Some(schedule) = load_schedule_for_date(date) {
+    if let Some(schedule) = Schedule::load_for_date(date) {
         Ok((schedule, false))
     } else {
         let prices = client.get_prices_for_date(date)?;
         let schedule = Schedule::compute(config, &prices);
-
-        create_dir_all(SCHEDULE_DIR_NAME)?;
-        write!(
-            File::create(schedule_filename(date))?,
-            "{}",
-            serde_json::to_string_pretty(&schedule)?
-        )?;
+        schedule.write_to_file(date)?;
         Ok((schedule, true))
     }
-}
-
-fn load_schedule_for_date(date: RelativeDate) -> Option<Schedule> {
-    let file = File::open(schedule_filename(date)).ok()?;
-    serde_json::from_reader(file).ok()
-}
-
-const SCHEDULE_DIR_NAME: &str = "schedules";
-
-fn schedule_filename(date: RelativeDate) -> String {
-    format!(
-        "{}/schedule_{}.json",
-        SCHEDULE_DIR_NAME,
-        date.format("%Y-%m-%d")
-    )
 }
