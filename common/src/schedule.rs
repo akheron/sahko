@@ -1,10 +1,9 @@
-use chrono::{DateTime, Duration, FixedOffset, Local, Timelike};
+use chrono::{DateTime, Duration, FixedOffset, Local, NaiveDate, TimeZone, Timelike};
 use serde::{Deserialize, Serialize};
 use std::fs::{create_dir_all, File};
 use std::io::Write;
 
 use crate::config::ScheduleConfig;
-use crate::domain::RelativeDate;
 use crate::prices::Price;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -152,18 +151,19 @@ impl Schedule {
         self.prices.iter().map(|price| price.price).sum::<f64>() / self.prices.len() as f64
     }
 
-    pub fn load_for_date(date: RelativeDate) -> Option<Self> {
-        const SCHEDULE_DIR_NAME: &str = "schedules";
-        let file_name = format!(
-            "{}/schedule_{}.json",
-            SCHEDULE_DIR_NAME,
-            date.format("%Y-%m-%d")
-        );
-        let file = File::open(file_name).ok()?;
+    pub fn price_for_hour<Tz: TimeZone>(&self, hour: DateTime<Tz>) -> Option<f64> {
+        self.prices
+            .iter()
+            .find(|price| price.validity == hour)
+            .map(|price| price.price)
+    }
+
+    pub fn load_for_date(date: NaiveDate) -> Option<Self> {
+        let file = File::open(schedule_filename(date)).ok()?;
         serde_json::from_reader(file).ok()
     }
 
-    pub fn write_to_file(&self, date: RelativeDate) -> std::io::Result<()> {
+    pub fn write_to_file(&self, date: NaiveDate) -> std::io::Result<()> {
         create_dir_all(SCHEDULE_DIR_NAME)?;
         write!(
             File::create(schedule_filename(date))?,
@@ -175,7 +175,7 @@ impl Schedule {
 
 const SCHEDULE_DIR_NAME: &str = "schedules";
 
-fn schedule_filename(date: RelativeDate) -> String {
+fn schedule_filename(date: NaiveDate) -> String {
     format!(
         "{}/schedule_{}.json",
         SCHEDULE_DIR_NAME,

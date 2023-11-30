@@ -4,9 +4,9 @@ use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 
-use crate::config::EmailConfig;
-use crate::domain::RelativeDate;
-use crate::schedule::Schedule;
+use common::config::EmailConfig;
+use common::domain::RelativeDate;
+use common::schedule::Schedule;
 
 pub struct EmailClient(Option<EmailConfig>);
 
@@ -16,7 +16,7 @@ impl EmailClient {
     }
 
     pub fn send_schedule(&self, date: RelativeDate, schedule: &Schedule) -> Result<()> {
-        let subject = format!("Aikataulu {}", date.format("%d.%m.%Y"));
+        let subject = format!("Aikataulu {}", date.to_naive_date().format("%d.%m.%Y"));
         let mut body: Vec<String> = Vec::new();
 
         for pin in &schedule.pins {

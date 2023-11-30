@@ -1,23 +1,19 @@
-mod config;
-mod domain;
 mod email;
 mod gpio;
-mod prices;
-mod schedule;
 
 use chrono::Timelike;
+use eyre::Result;
 use pico_args::Arguments;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use eyre::Result;
+use common::config::{Config, ScheduleConfig};
+use common::domain::RelativeDate;
+use common::prices::PriceClient;
+use common::schedule::Schedule;
 
-use crate::config::{Config, ScheduleConfig};
-use crate::domain::RelativeDate;
 use crate::email::EmailClient;
 use crate::gpio::{set_pin_states, StateChange};
-use crate::prices::PriceClient;
-use crate::schedule::Schedule;
 
 const MAKE_TOMORROWS_SCHEDULE: u32 = 16; // 16:00
 
@@ -107,7 +103,7 @@ fn ensure_schedule(
     client: &PriceClient,
     config: &[ScheduleConfig],
 ) -> Result<(Schedule, bool)> {
-    if let Some(schedule) = Schedule::load_for_date(date) {
+    if let Some(schedule) = Schedule::load_for_date(date.to_naive_date()) {
         Ok((schedule, false))
     } else {
         let prices = client.get_prices_for_date(date)?;

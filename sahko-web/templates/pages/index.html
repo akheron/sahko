@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block body %}
+<h1>sahko</h1>
+
+<div hx-boost="true">
+  {% match prev_date %}
+    {% when Some with (date) %}<a href="/?date={{ date }}">&laquo;</a>
+    {% when None %}&laquo;
+  {% endmatch %}
+  {{ current_date }}
+  {% match next_date %}
+    {% when Some with (date) %}<a href="/?date={{ date }}">&raquo;</a>
+    {% when None %}&raquo;
+  {% endmatch %}
+</div>
+<form hx-post="/schedule" hx-target="#schedule" hx-disabled-elt="input[type=submit]">
+  <div id="schedule">
+    {% include "components/schedule.html" %}
+  </div>
+  <input type="submit" value="Submit"/>
+</form>
+{% endblock %}
