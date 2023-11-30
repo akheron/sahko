@@ -3,6 +3,8 @@
 A simple program for controlling electrical devices by turning GPIO pins on and off on a Raspberry Pi based on the
 electricity spot price.
 
+Now also includes an experimental web interface for editing the schedules.
+
 ## Prerequisites
 
 - One or more devices you want to control, e.g. a boiler, heaters, etc.
@@ -41,7 +43,7 @@ Create `config.json`, see [below](#config) for reference.
 Build for Raspberry Pi using [cross]:
 
 ```
-$ cross build --target arm-unknown-linux-gnueabihf --release
+$ cross build --bin sahko --target arm-unknown-linux-gnueabihf --release
 ```
 
 Copy `config.json` and `target/arm-unknown-linux-gnueabihf/release/sahko` to the Raspberry Pi.
