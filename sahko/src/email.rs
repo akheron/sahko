@@ -21,7 +21,7 @@ impl EmailClient {
 
         for pin in &schedule.pins {
             if pin.on_hours.is_empty() {
-                body.push(format!("{}: ei päälläoloaikoja", pin.name));
+                body.push(format!("{}: ei päälläoloaikoja\n", pin.name));
             } else {
                 let ranges = to_ranges(&pin.on_hours);
                 body.push(format!(
