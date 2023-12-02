@@ -8,6 +8,8 @@ use axum::routing::get;
 use axum::routing::post;
 use axum::{Extension, Router};
 use eyre::{Context, Result};
+use std::net::SocketAddr;
+use std::str::FromStr;
 use tower_http::services::ServeDir;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -38,11 +40,8 @@ async fn main() -> Result<()> {
         )
         .layer(Extension(write_lock));
 
-    let port = std::env::var("PORT")
-        .unwrap_or_else(|_| "8000".to_string())
-        .parse::<u16>()
-        .unwrap();
-    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+    let bind = std::env::var("BIND").unwrap_or_else(|_| "127.0.0.1:8000".to_string());
+    let addr = SocketAddr::from_str(&bind)?;
 
     info!("Starting server on {}", addr);
     axum::Server::bind(&addr)
