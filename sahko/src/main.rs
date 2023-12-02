@@ -108,7 +108,7 @@ fn ensure_schedule(
     } else {
         let prices = client.get_prices_for_date(date)?;
         let schedule = Schedule::compute(config, &prices);
-        schedule.write_to_file(date)?;
+        schedule.write_to_file(date.to_naive_date())?;
         Ok((schedule, true))
     }
 }
