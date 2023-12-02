@@ -19,7 +19,14 @@
     {% for item in pin.hours %}
     <label class="hour">
       {{ item.hour }}
-      <input id="hour-{{ loop.index0 }}" name="pin_hours" type="checkbox" value="{{ pin.pin }},{{ loop.index0 }}" {% if item.on %}checked{% endif %} />
+      <input
+        id="hour-{{ loop.index0 }}"
+        name="pin_hours"
+        type="checkbox"
+        value="{{ pin.pin }},{{ loop.index0 }}"
+        {% if item.on %}checked{% endif %}
+        {% if item.past %}disabled{% endif %}
+      />
       {{ item.price }}
     </label>
     {% endfor %}

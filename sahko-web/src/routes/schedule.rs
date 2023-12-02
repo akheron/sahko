@@ -3,13 +3,13 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Extension;
 use axum_extra::extract::Form;
-use chrono::NaiveDate;
+use chrono::{DateTime, Local, NaiveDate};
 use common::schedule::Schedule;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
-use crate::date::NaiveDateExt;
+use crate::date::{LocalExt, NaiveDateExt};
 use crate::lock::WriteLock;
 use crate::response::HtmlTemplate;
 
@@ -30,19 +30,24 @@ pub async fn update_schedule_route(
             .any(|(p, h)| *p == pin && *h == hour_index)
     };
 
+    let current_hour = Local::current_hour();
     for pin in &mut schedule.pins {
-        pin.on_hours = body
-            .date
-            .iter_hours()
-            .enumerate()
-            .filter_map(|(hour_index, hour)| {
-                if is_on(pin.pin, hour_index as u32) {
-                    Some(hour.fixed_offset())
-                } else {
-                    None
-                }
-            })
-            .collect();
+        // Keep hours before the current hours as-is
+        let before_current_hour = pin.on_hours.iter().filter(|&t| t < &current_hour).copied();
+
+        // Update hours after the current hour
+        let after_current_hour =
+            body.date
+                .iter_hours()
+                .enumerate()
+                .filter_map(|(hour_index, hour)| {
+                    if hour >= current_hour && is_on(pin.pin, hour_index as u32) {
+                        Some(hour.fixed_offset())
+                    } else {
+                        None
+                    }
+                });
+        pin.on_hours = before_current_hour.chain(after_current_hour).collect();
     }
 
     {
@@ -52,7 +57,7 @@ pub async fn update_schedule_route(
     }
 
     HtmlTemplate(ScheduleTemplate {
-        schedule: ScheduleModel::from_pin_schedules(body.date, &schedule),
+        schedule: ScheduleModel::from_pin_schedules(current_hour, body.date, &schedule),
     })
     .into_response()
 }
@@ -61,7 +66,7 @@ pub async fn update_schedule_route(
 pub struct UpdateScheduleBody {
     date: NaiveDate,
 
-    #[serde(deserialize_with = "deserialize_pairs")]
+    #[serde(default, deserialize_with = "deserialize_pairs")]
     pin_hours: Vec<(u8, u32)>,
 }
 
@@ -107,11 +112,16 @@ pub struct PinInfo {
 pub struct HourInfo {
     pub hour: String,
     pub on: bool,
+    pub past: bool,
     pub price: f64,
 }
 
 impl ScheduleModel {
-    pub fn from_pin_schedules(date: NaiveDate, schedule: &Schedule) -> Self {
+    pub fn from_pin_schedules(
+        current_hour: DateTime<Local>,
+        date: NaiveDate,
+        schedule: &Schedule,
+    ) -> Self {
         Self {
             date,
             pins: schedule
@@ -127,6 +137,7 @@ impl ScheduleModel {
                             HourInfo {
                                 hour: hour.format("%H").to_string(),
                                 on,
+                                past: hour < current_hour,
                                 price: schedule.price_for_hour(hour).unwrap(),
                             }
                         })

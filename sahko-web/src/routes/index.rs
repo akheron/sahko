@@ -1,3 +1,4 @@
+use crate::date::LocalExt;
 use crate::response::HtmlTemplate;
 use crate::routes::schedule::ScheduleModel;
 use askama::Template;
@@ -41,7 +42,7 @@ pub async fn index_route(query: Query<IndexQuery>) -> Response {
         current_date: current_date.format("%a %d.%m.%Y").to_string(),
         prev_date: Schedule::load_for_date(prev_date).map(|_| prev_date),
         next_date: Schedule::load_for_date(next_date).map(|_| next_date),
-        schedule: ScheduleModel::from_pin_schedules(current_date, &schedule),
+        schedule: ScheduleModel::from_pin_schedules(Local::current_hour(), current_date, &schedule),
     })
     .into_response()
 }

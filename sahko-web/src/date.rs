@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Local, NaiveDate, NaiveTime};
+use chrono::{DateTime, Duration, Local, NaiveDate, NaiveTime, Timelike};
 
 pub trait NaiveDateExt {
     fn start_of_day(&self) -> DateTime<Local>;
@@ -33,5 +33,19 @@ impl Iterator for HourIterator {
             }
         }
         result
+    }
+}
+
+pub trait LocalExt {
+    fn current_hour() -> DateTime<Local>;
+}
+
+impl LocalExt for Local {
+    fn current_hour() -> DateTime<Local> {
+        Self::now()
+            .with_minute(0)
+            .and_then(|t| t.with_second(0))
+            .and_then(|t| t.with_nanosecond(0))
+            .unwrap()
     }
 }
