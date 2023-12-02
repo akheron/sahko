@@ -100,6 +100,7 @@ pub struct PinInfo {
     pub name: String,
     pub pin: u8,
     pub hours: Vec<HourInfo>,
+    pub num_on_hours: usize,
     pub avg_price: f64,
 }
 
@@ -130,6 +131,7 @@ impl ScheduleModel {
                             }
                         })
                         .collect(),
+                    num_on_hours: pin.on_hours.len(),
                     avg_price: pin.avg_price(&schedule.prices, true),
                 })
                 .collect(),

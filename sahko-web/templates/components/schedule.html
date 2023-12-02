@@ -1,17 +1,33 @@
+<style>
+  .schedules {
+    display: flex;
+    gap: 1rem;
+  }
+  .hour {
+    display: block;
+  }
+  .day-avg {
+    margin-top: 1rem;
+  }
+</style>
+
 <input type="hidden" name="date" value="{{ schedule.date }}" />
-{% for pin in schedule.pins %}
-<div>{{ pin.name }}</div>
-{% for item in pin.hours %}
-<div class="hour">
-  <label for="hour-{{ loop.index0 }}">{{ item.hour }}</label>
-  <input id="hour-{{ loop.index0 }}" name="pin_hours" type="checkbox" value="{{ pin.pin }},{{ loop.index0 }}" {% if item.on %}checked{% endif %} />
-  {{ item.price }}
+<div class="schedules">
+  {% for pin in schedule.pins %}
+  <div class="pin-schedule">
+    <h2>{{ pin.name }}</h2>
+    {% for item in pin.hours %}
+    <label class="hour">
+      {{ item.hour }}
+      <input id="hour-{{ loop.index0 }}" name="pin_hours" type="checkbox" value="{{ pin.pin }},{{ loop.index0 }}" {% if item.on %}checked{% endif %} />
+      {{ item.price }}
+    </label>
+    {% endfor %}
+    <div>Päällä: {{ pin.num_on_hours }} h</div>
+    <div>Keskihinta: {{ "{:.3}"|format(pin.avg_price) }}</div>
+  </div>
+  {% endfor %}
 </div>
-{% endfor %}
-<div>
-  Keskihinta: {{ "{:.3}"|format(pin.avg_price) }}
-</div>
-{% endfor %}
-<div>
+<div class="day-avg">
   Vuorokauden keskihinta: {{ "{:.3}"|format(schedule.avg_price) }}
 </div>
