@@ -15,7 +15,7 @@
 <div class="schedules">
   {% for pin in schedule.pins %}
   <div class="pin-schedule">
-    <h2>{{ pin.name }}</h2>
+    <strong>{{ pin.name }}</strong>
     {% for item in pin.hours %}
     <label class="hour">
       {{ item.hour }}

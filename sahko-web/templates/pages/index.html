@@ -2,28 +2,42 @@
 
 {% block body %}
 <style>
+  body {
+    margin: 0;
+    padding: 1rem;
+  }
+  #navi {
+    display: flex;
+    > * {
+      flex: 1;
+    }
+    margin-bottom: 1rem;
+  }
   #schedule {
     margin-bottom: 1rem;
   }
 </style>
 
-<h1>sahko</h1>
-
-<div hx-boost="true">
-  {% match prev_date %}
-    {% when Some with (date) %}<a href="/?date={{ date }}">&laquo;</a>
-    {% when None %}&laquo;
-  {% endmatch %}
-  {{ current_date }}
-  {% match next_date %}
-    {% when Some with (date) %}<a href="/?date={{ date }}">&raquo;</a>
-    {% when None %}&raquo;
-  {% endmatch %}
+<div id="navi" hx-boost="true">
+  <div>
+    {% match prev_date %}
+      {% when Some with (date) %}<a href="/?date={{ date }}">&laquo;</a>
+      {% when None %}&laquo;
+    {% endmatch %}
+    {{ current_date }}
+    {% match next_date %}
+      {% when Some with (date) %}<a href="/?date={{ date }}">&raquo;</a>
+      {% when None %}
+    {% endmatch %}
+  </div>
+  <div>
+    <a href="/">Tänään</a>
+  </div>
 </div>
-<form hx-post="/schedule" hx-target="#schedule" hx-disabled-elt="input[type=submit]">
+<form hx-post="/schedule" hx-target="#schedule" hx-disabled-elt="button[type=submit]">
   <div id="schedule">
     {% include "components/schedule.html" %}
   </div>
-  <input type="submit" value="Submit"/>
+  <button type="submit">Tallenna</button>
 </form>
 {% endblock %}
