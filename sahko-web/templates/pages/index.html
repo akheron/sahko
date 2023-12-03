@@ -34,10 +34,6 @@
     <a href="/">Tänään</a>
   </div>
 </div>
-<form hx-post="/schedule" hx-target="#schedule" hx-disabled-elt="button[type=submit]">
-  <div id="schedule">
-    {% include "components/schedule.html" %}
-  </div>
-  <button type="submit">Tallenna</button>
-</form>
+
+{% include "components/schedule.html" %}
 {% endblock %}
