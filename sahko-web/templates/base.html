@@ -20,6 +20,32 @@ window.cssScope ??= new MutationObserver(mutations => { // Allow 1 observer.
 	})
 }).observe(document.documentElement, {childList: true, subtree: true})
     </script>
+    <style>
+      body {
+        margin: 0;
+        padding: 1rem;
+        font-family: sans-serif;
+      }
+      input[type="checkbox"] {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        border: 2px solid #000;
+        width: 20px;
+        height: 20px;
+        outline: none;
+      }
+      input[type="checkbox"]:checked:not(:disabled) {
+        background-color: #000;
+      }
+      input[type="checkbox"]:disabled {
+        cursor: not-allowed;
+        border-color: #aaa;
+      }
+      input[type="checkbox"]:checked:disabled {
+        background-color: #aaa;
+      }
+    </style>
     <title>sahko</title>
   </head>
   <body>

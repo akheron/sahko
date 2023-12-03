@@ -1,26 +1,27 @@
-<style>
-  .schedules {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-  .hour {
-    display: block;
-  }
-  .day-avg {
-    margin-top: 1rem;
-  }
-</style>
-
 <form hx-post="/schedule" hx-target="this" hx-swap="outerHTML" hx-disabled-elt="button[type=submit]">
   <input type="hidden" name="date" value="{{ schedule.date }}" />
   <div class="schedules">
+    <style>
+      me {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+      me h2 {
+        margin: 0.5rem 0;
+        font-size: 1rem;
+      }
+      me label {
+        display: flex;
+        align-items: center;
+      }
+    </style>
     {% for pin in schedule.pins %}
     <div class="pin-schedule">
-      <strong>{{ pin.name }}</strong>
+      <h2>{{ pin.name }}</h2>
       {% for item in pin.hours %}
-      <label class="hour">
-        {{ item.hour }}
+      <label>
+        <span>{{ item.hour }}</span>
         <input
           id="hour-{{ loop.index0 }}"
           name="pin_hours"
@@ -29,17 +30,26 @@
           {% if item.on %}checked{% endif %}
           {% if item.past %}disabled{% endif %}
         />
-        {{ item.price }}
+        <span>{{ item.price }}</span>
       </label>
       {% endfor %}
-      <div>Päällä: {{ pin.num_on_hours }} h</div>
-      <div>Keskihinta: {{ "{:.3}"|format(pin.avg_price) }}</div>
+      <div class="info">
+        <style>
+          me {
+            padding-top: 0.5rem;
+            line-height: 1.5;
+          }
+        </style>
+        <div>Päällä: {{ pin.num_on_hours }} h</div>
+        <div>Keskihinta: {{ "{:.3}"|format(pin.avg_price) }}</div>
+      </div>
     </div>
     {% endfor %}
   </div>
-  <button type="submit">Tallenna</button>
-  <div class="day-avg">
+  {% if !schedule.past %}
+    <button type="submit">Tallenna</button>
+  {% endif %}
+  <p>
     Vuorokauden keskihinta: {{ "{:.3}"|format(schedule.avg_price) }}
-  </div>
+  </p>
 </form>
-

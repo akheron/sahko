@@ -97,6 +97,7 @@ struct ScheduleTemplate {
 
 pub struct ScheduleModel {
     pub date: NaiveDate,
+    pub past: bool,
     pub pins: Vec<PinInfo>,
     pub avg_price: f64,
 }
@@ -124,6 +125,7 @@ impl ScheduleModel {
     ) -> Self {
         Self {
             date,
+            past: date < current_hour.naive_local().date(),
             pins: schedule
                 .pins
                 .iter()

@@ -1,24 +1,16 @@
 {% extends "base.html" %}
 
 {% block body %}
-<style>
-  body {
-    margin: 0;
-    padding: 1rem;
-  }
-  #navi {
-    display: flex;
-    > * {
+<nav hx-boost="true">
+  <style>
+    me {
+      display: flex;
+      margin-bottom: 1rem;
+    }
+    me > div {
       flex: 1;
     }
-    margin-bottom: 1rem;
-  }
-  #schedule {
-    margin-bottom: 1rem;
-  }
-</style>
-
-<div id="navi" hx-boost="true">
+  </style>
   <div>
     {% match prev_date %}
       {% when Some with (date) %}<a href="/?date={{ date }}">&laquo;</a>
@@ -33,7 +25,10 @@
   <div>
     <a href="/">Tänään</a>
   </div>
+</nav>
+
+<div>
+  {% include "components/schedule.html" %}
 </div>
 
-{% include "components/schedule.html" %}
 {% endblock %}
