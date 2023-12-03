@@ -49,6 +49,7 @@
   {% if !schedule.past %}
     <button type="submit">Tallenna</button>
   {% endif %}
+  <button type="button" hx-post="/email" hx-params="date" hx-disabled-elt="this">Lähetä aikataulu</button>
   <p>
     Vuorokauden keskihinta: {{ "{:.3}"|format(schedule.avg_price) }}
   </p>

@@ -1,12 +1,11 @@
-use chrono::{DateTime, Duration, FixedOffset, Timelike};
+use chrono::{DateTime, Duration, FixedOffset, NaiveDate, Timelike};
 use eyre::{Report, Result};
 use lettre::message::header::ContentType;
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{Message, SmtpTransport, Transport};
 
-use common::config::EmailConfig;
-use common::domain::RelativeDate;
-use common::schedule::Schedule;
+use crate::config::EmailConfig;
+use crate::schedule::Schedule;
 
 pub struct EmailClient(Option<EmailConfig>);
 
@@ -15,8 +14,8 @@ impl EmailClient {
         Self(config.clone())
     }
 
-    pub fn send_schedule(&self, date: RelativeDate, schedule: &Schedule) -> Result<()> {
-        let subject = format!("Aikataulu {}", date.to_naive_date().format("%d.%m.%Y"));
+    pub fn send_schedule(&self, date: NaiveDate, schedule: &Schedule) -> Result<()> {
+        let subject = format!("Aikataulu {}", date.format("%d.%m.%Y"));
         let mut body: Vec<String> = Vec::new();
 
         for pin in &schedule.pins {

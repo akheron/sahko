@@ -4,6 +4,7 @@ mod response;
 mod routes;
 
 use crate::lock::WriteLock;
+use crate::routes::email::send_email_route;
 use axum::routing::get;
 use axum::routing::post;
 use axum::{Extension, Router};
@@ -35,6 +36,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/", get(index_route))
         .route("/schedule", post(update_schedule_route))
+        .route("/email", post(send_email_route))
         .nest_service(
             "/assets",
             ServeDir::new(format!("{}/assets", assets_path.to_str().unwrap())).precompressed_gzip(),

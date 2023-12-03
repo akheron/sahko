@@ -1,4 +1,3 @@
-mod email;
 mod gpio;
 
 use chrono::Timelike;
@@ -9,10 +8,10 @@ use std::time::Duration;
 
 use common::config::{Config, ScheduleConfig};
 use common::domain::RelativeDate;
+use common::email::EmailClient;
 use common::prices::PriceClient;
 use common::schedule::Schedule;
 
-use crate::email::EmailClient;
 use crate::gpio::{set_pin_states, StateChange};
 
 const MAKE_TOMORROWS_SCHEDULE: u32 = 16; // 16:00
@@ -43,7 +42,7 @@ fn send_schedules(config: &Config, email_client: &EmailClient) -> Result<()> {
     let price_client = PriceClient::new();
     for date in [RelativeDate::Today, RelativeDate::Tomorrow] {
         let (schedule, _) = ensure_schedule(date, &price_client, &config.schedules)?;
-        let _ = email_client.send_schedule(date, &schedule);
+        let _ = email_client.send_schedule(date.to_naive_date(), &schedule);
         std::thread::sleep(Duration::from_secs(1));
     }
     Ok(())
@@ -55,14 +54,15 @@ fn run(config: &[ScheduleConfig], email_client: &EmailClient) -> Result<()> {
 
     let (schedule, created) = ensure_schedule(RelativeDate::Today, &price_client, config)?;
     if created {
-        let _ = email_client.send_schedule(RelativeDate::Today, &schedule);
+        let _ = email_client.send_schedule(RelativeDate::Today.to_naive_date(), &schedule);
     }
 
     if now.time().hour() >= MAKE_TOMORROWS_SCHEDULE {
         match ensure_schedule(RelativeDate::Tomorrow, &price_client, config) {
             Ok((schedule, created)) => {
                 if created {
-                    let _ = email_client.send_schedule(RelativeDate::Tomorrow, &schedule);
+                    let _ = email_client
+                        .send_schedule(RelativeDate::Tomorrow.to_naive_date(), &schedule);
                 }
             }
             Err(error) => {
