@@ -13,6 +13,6 @@ tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower = { version = "0.4", features = ["util"] }
-tower-http = { version = "0.4", features = ["fs", "trace"] }
+tower-http = { version = "0.4", features = ["compression-gzip", "fs", "trace"] }
 common = { path = "../common" }
 serde = { version = "1.0.193", features = ["derive"] }

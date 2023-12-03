@@ -10,6 +10,7 @@ use axum::{Extension, Router};
 use eyre::{Context, Result};
 use std::net::SocketAddr;
 use std::str::FromStr;
+use tower_http::compression::CompressionLayer;
 use tower_http::services::ServeDir;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -38,7 +39,8 @@ async fn main() -> Result<()> {
             "/assets",
             ServeDir::new(format!("{}/assets", assets_path.to_str().unwrap())).precompressed_gzip(),
         )
-        .layer(Extension(write_lock));
+        .layer(Extension(write_lock))
+        .layer(CompressionLayer::new());
 
     let bind = std::env::var("BIND").unwrap_or_else(|_| "127.0.0.1:8000".to_string());
     let addr = SocketAddr::from_str(&bind)?;
