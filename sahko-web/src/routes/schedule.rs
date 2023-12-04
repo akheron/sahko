@@ -11,7 +11,6 @@ use std::str::FromStr;
 
 use crate::date::{LocalExt, NaiveDateExt};
 use crate::lock::WriteLock;
-use crate::response::HtmlTemplate;
 
 pub async fn update_schedule_route(
     Extension(write_lock): Extension<WriteLock>,
@@ -56,9 +55,9 @@ pub async fn update_schedule_route(
         schedule.write_to_file(body.date).unwrap();
     }
 
-    HtmlTemplate(ScheduleTemplate {
+    ScheduleTemplate {
         schedule: ScheduleModel::from_pin_schedules(current_hour, body.date, &schedule),
-    })
+    }
     .into_response()
 }
 

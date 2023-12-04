@@ -1,6 +1,5 @@
 mod date;
 mod lock;
-mod response;
 mod routes;
 
 use crate::lock::WriteLock;
@@ -11,6 +10,7 @@ use axum::{Extension, Router};
 use eyre::{Context, Result};
 use std::net::SocketAddr;
 use std::str::FromStr;
+use tokio::net::TcpListener;
 use tower_http::compression::CompressionLayer;
 use tower_http::services::ServeDir;
 use tracing::info;
@@ -46,10 +46,10 @@ async fn main() -> Result<()> {
 
     let bind = std::env::var("BIND").unwrap_or_else(|_| "127.0.0.1:8000".to_string());
     let addr = SocketAddr::from_str(&bind)?;
+    let listener = TcpListener::bind(&addr).await?;
 
     info!("Starting server on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    axum::serve(listener, app.into_make_service())
         .await
         .context("Error starting server")?;
 
