@@ -45,6 +45,30 @@ window.cssScope ??= new MutationObserver(mutations => { // Allow 1 observer.
       input[type="checkbox"]:checked:disabled {
         background-color: #aaa;
       }
+      button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        font-size: 1rem;
+
+        &[type="submit"] {
+          background-color: #007bff;
+          color: white;
+
+          &:disabled {
+            background-color: #7fbdff;
+          }
+        }
+
+        &[type="button"] {
+          background-color: #282828;
+          color: white;
+
+          &:disabled {
+            background-color: #939393;
+          }
+        }
+      }
     </style>
     <title>sahko</title>
   </head>
