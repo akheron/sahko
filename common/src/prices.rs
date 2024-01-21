@@ -1,7 +1,8 @@
 use crate::domain::RelativeDate;
-use chrono::{DateTime, FixedOffset};
-use eyre::{Result, WrapErr};
+use chrono::{DateTime, FixedOffset, Local, TimeZone};
+use eyre::{eyre, Result, WrapErr};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Price {
@@ -21,42 +22,52 @@ impl PriceClient {
         )
     }
 
-    fn get_prices(&self, url_suffix: &str) -> Result<Vec<Price>> {
-        let url = format!("https://api.spot-hinta.fi/{}", url_suffix);
-        self.0
-            .get(&url)
+    pub fn get_prices_for_date(&self, date: RelativeDate) -> Result<Vec<Price>> {
+        let (start, end) = date.to_start_and_end();
+        let response = self
+            .0
+            .get("https://dashboard.elering.ee/api/nps/price")
+            .query(&[("start", start.to_rfc3339())])
+            .query(&[("end", end.to_rfc3339())])
             .send()
-            .wrap_err_with(|| format!("Unable to request spot prices from {}", url))?
-            .json::<Vec<SpotPrice>>()
-            .wrap_err_with(|| format!("Unable to parse spot prices from {}", url))?
+            .wrap_err_with(|| "Unable to request spot prices")?
+            .json::<EleringResponse>()
+            .wrap_err_with(|| "Unable to parse spot prices")?;
+
+        if !response.success {
+            return Err(eyre!("Elering API returned error"));
+        }
+
+        response
+            .data
             .iter()
+            .filter_map(
+                |(key, prices)| {
+                    if key == "fi" {
+                        Some(prices)
+                    } else {
+                        None
+                    }
+                },
+            )
+            .flat_map(|prices| prices.iter())
             .map(|price| {
+                let c_per_kwh = price.price / 10.0; // €/MWh to cents/kWh
                 Ok(Price {
-                    validity: price.date_time,
-                    price: price.price * 100.0, // € to cents
+                    validity: Local
+                        .timestamp_opt(price.timestamp as i64, 0)
+                        .unwrap()
+                        .fixed_offset(),
+                    price: if c_per_kwh > 0.0 {
+                        // Add VAT, round to 3 decimal places
+                        (c_per_kwh * VAT * 1000.0).round() / 1000.0
+                    } else {
+                        // No VAT for negative prices
+                        c_per_kwh
+                    },
                 })
             })
             .collect()
-    }
-
-    pub fn get_prices_for_date(&self, date: RelativeDate) -> Result<Vec<Price>> {
-        self.get_prices(match date {
-            RelativeDate::Today => "Today",
-            RelativeDate::Tomorrow => "DayForward",
-        })?
-        .iter()
-        .map(|price| {
-            Ok(Price {
-                validity: price.validity,
-                price: if price.price > 0.0 {
-                    // Round to 3 decimal places
-                    (price.price * VAT * 1000.0).round() / 1000.0
-                } else {
-                    price.price
-                },
-            })
-        })
-        .collect()
     }
 }
 
@@ -69,10 +80,14 @@ impl Default for PriceClient {
 const VAT: f64 = 1.24;
 
 #[derive(Deserialize, Debug)]
-struct SpotPrice {
-    #[serde(rename = "DateTime")]
-    date_time: DateTime<FixedOffset>,
+struct EleringResponse {
+    success: bool,
+    // Keys: ee, fi, lt, lv
+    data: HashMap<String, Vec<SpotPrice>>,
+}
 
-    #[serde(rename = "PriceNoTax")]
-    price: f64,
+#[derive(Deserialize, Debug)]
+struct SpotPrice {
+    timestamp: u32, // unix timestamp
+    price: f64,     // €/MWh
 }
