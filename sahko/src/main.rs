@@ -1,6 +1,6 @@
 mod gpio;
 
-use chrono::Timelike;
+use chrono::NaiveTime;
 use eyre::Result;
 use pico_args::Arguments;
 use std::path::PathBuf;
@@ -14,7 +14,7 @@ use common::schedule::Schedule;
 
 use crate::gpio::{set_pin_states, StateChange};
 
-const MAKE_TOMORROWS_SCHEDULE: u32 = 16; // 16:00
+const MAKE_TOMORROWS_SCHEDULE: (u32, u32) = (15, 5);
 
 fn main() -> Result<()> {
     let mut args = Arguments::from_env();
@@ -57,7 +57,9 @@ fn run(config: &[ScheduleConfig], email_client: &EmailClient) -> Result<()> {
         let _ = email_client.send_schedule(RelativeDate::Today.to_naive_date(), &schedule);
     }
 
-    if now.time().hour() >= MAKE_TOMORROWS_SCHEDULE {
+    let tomorrow_available =
+        NaiveTime::from_hms_opt(MAKE_TOMORROWS_SCHEDULE.0, MAKE_TOMORROWS_SCHEDULE.1, 0).unwrap();
+    if now.time() >= tomorrow_available {
         match ensure_schedule(RelativeDate::Tomorrow, &price_client, config) {
             Ok((schedule, created)) => {
                 if created {
