@@ -18,6 +18,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::routes::index::index_route;
 use crate::routes::schedule::update_schedule_route;
+use crate::routes::stats::stats_route;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -37,6 +38,7 @@ async fn main() -> Result<()> {
         .route("/", get(index_route))
         .route("/schedule", post(update_schedule_route))
         .route("/email", post(send_email_route))
+        .route("/stats", get(stats_route))
         .nest_service(
             "/assets",
             ServeDir::new(format!("{}/assets", assets_path.to_str().unwrap())).precompressed_gzip(),

@@ -4,6 +4,10 @@ use eyre::{eyre, Result, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub fn round_price(price: f64) -> f64 {
+    (price * 1000.0).round() / 1000.0
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Price {
     pub validity: DateTime<FixedOffset>,
@@ -59,8 +63,8 @@ impl PriceClient {
                         .unwrap()
                         .fixed_offset(),
                     price: if c_per_kwh > 0.0 {
-                        // Add VAT, round to 3 decimal places
-                        (c_per_kwh * VAT * 1000.0).round() / 1000.0
+                        // Add VAT
+                        round_price(c_per_kwh * VAT)
                     } else {
                         // No VAT for negative prices
                         c_per_kwh

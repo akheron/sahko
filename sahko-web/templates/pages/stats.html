@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div>
+  <a href="/">Aikataulut</a>
+</div>
+<h1>Tilastot</h1>
+<div>
+  <table>
+    <tr>
+      <th>vvvv-kk</th>
+      <th>keskihinta</th>
+    </tr>
+    {% for month in stats %}
+    <tr>
+      <td>{{ month.name }}</td>
+      <td>{{ month.avg_price }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <style>
+    .me table {
+      border-collapse: collapse;
+
+      th, td {
+        padding: 5px;
+        border: 1px solid black;
+      }
+
+      th {
+        text-align: left;
+      }
+    }
+  </style>
+</div>
+{% endblock %}
