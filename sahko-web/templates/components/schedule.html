@@ -1,5 +1,5 @@
 <form hx-post="/schedule" hx-target="this" hx-swap="outerHTML" hx-disabled-elt="button[type=submit]">
-  <input type="hidden" name="date" value="{{ schedule.date }}" />
+  <input type="hidden" name="date" value="{{ schedule.date }}"/>
   <div class="schedules">
     <style>
       me {
@@ -7,10 +7,12 @@
         gap: 1rem;
         margin-bottom: 1rem;
       }
+
       me h2 {
         margin: 0.5rem 0;
         font-size: 1rem;
       }
+
       me label {
         display: flex;
         align-items: center;
@@ -30,7 +32,7 @@
           {% if item.on %}checked{% endif %}
           {% if item.past %}disabled{% endif %}
         />
-        <span>{{ item.price }}</span>
+        <span>{{ item.price|fmt("{:.3}") }}</span>
       </label>
       {% endfor %}
       <div class="info">
@@ -41,16 +43,16 @@
           }
         </style>
         <div>Päällä: {{ pin.num_on_hours }} h</div>
-        <div>Keskihinta: {{ "{:.3}"|format(pin.avg_price) }}</div>
+        <div>Keskihinta: {{ pin.avg_price|fmt("{:.3}") }}</div>
       </div>
     </div>
     {% endfor %}
   </div>
   {% if !schedule.past %}
-    <button type="submit">Tallenna</button>
+  <button type="submit">Tallenna</button>
   {% endif %}
   <button type="button" hx-post="/email" hx-params="date" hx-disabled-elt="this">Lähetä aikataulu</button>
   <p>
-    Vuorokauden keskihinta: {{ "{:.3}"|format(schedule.avg_price) }}
+    Vuorokauden keskihinta: {{ schedule.avg_price|fmt("{:.3}") }}
   </p>
 </form>
