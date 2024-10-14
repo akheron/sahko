@@ -1,7 +1,7 @@
 mod gpio;
 
 use chrono::NaiveTime;
-use eyre::Result;
+use eyre::{eyre, Result};
 use pico_args::Arguments;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -109,6 +109,10 @@ fn ensure_schedule(
         Ok((schedule, false))
     } else {
         let prices = client.get_prices_for_date(date)?;
+        // DST change day may only have 23 entries
+        if prices.len() < 23 {
+            return Err(eyre!("Incomplete prices for {}", date.to_naive_date()));
+        }
         let schedule = Schedule::compute(config, &prices);
         schedule.write_to_file(date.to_naive_date())?;
         Ok((schedule, true))
