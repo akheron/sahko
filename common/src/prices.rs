@@ -81,7 +81,7 @@ impl Default for PriceClient {
     }
 }
 
-const VAT: f64 = 1.24;
+const VAT: f64 = 1.255;
 
 #[derive(Deserialize, Debug)]
 struct EleringResponse {
