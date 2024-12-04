@@ -1,22 +1,13 @@
 use crate::domain::RelativeDate;
-use chrono::{DateTime, FixedOffset, Local, TimeZone};
+use crate::prices::{round_price, Price};
+use chrono::{Local, TimeZone};
 use eyre::{eyre, Result, WrapErr};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 
-pub fn round_price(price: f64) -> f64 {
-    (price * 1000.0).round() / 1000.0
-}
+pub struct EleringPriceClient(reqwest::blocking::Client);
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Price {
-    pub validity: DateTime<FixedOffset>,
-    pub price: f64,
-}
-
-pub struct PriceClient(reqwest::blocking::Client);
-
-impl PriceClient {
+impl EleringPriceClient {
     pub fn new() -> Self {
         Self(
             reqwest::blocking::ClientBuilder::new()
@@ -42,7 +33,7 @@ impl PriceClient {
             return Err(eyre!("Elering API returned error"));
         }
 
-        response
+        Ok(response
             .data
             .iter()
             .filter_map(
@@ -57,7 +48,7 @@ impl PriceClient {
             .flat_map(|prices| prices.iter())
             .map(|price| {
                 let c_per_kwh = price.price / 10.0; // €/MWh to cents/kWh
-                Ok(Price {
+                Price {
                     validity: Local
                         .timestamp_opt(price.timestamp as i64, 0)
                         .unwrap()
@@ -69,15 +60,9 @@ impl PriceClient {
                         // No VAT for negative prices
                         c_per_kwh
                     },
-                })
+                }
             })
-            .collect()
-    }
-}
-
-impl Default for PriceClient {
-    fn default() -> Self {
-        Self::new()
+            .collect())
     }
 }
 
