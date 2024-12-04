@@ -129,3 +129,15 @@ Run tests:
 ```
 $ cargo test
 ```
+
+### Cross-compiling on macOS
+
+Install the required toolchains via Homebrew, see https://github.com/messense/homebrew-macos-cross-toolchains.
+
+Add the following to your `.zshrc` or `.bashrc`:
+
+```
+# See https://github.com/messense/homebrew-macos-cross-toolchains
+export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-unknown-linux-gnu-gcc
+export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
+```
