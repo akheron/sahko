@@ -141,3 +141,9 @@ Add the following to your `.zshrc` or `.bashrc`:
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-unknown-linux-gnu-gcc
 export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
 ```
+
+## Minimizing disk writes on Raspberry PI
+
+Edit `/etc/systemd/journald.conf`. Set `Storage=volatile` under `[Journal]` to log to ram.
+
+Edit `/etc/default/tailscaled`. Add `-no-logs-no-support` to `FLAGS` to reduce disk writes.
