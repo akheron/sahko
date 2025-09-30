@@ -26,6 +26,7 @@ impl PriceClient {
     }
 
     pub fn get_prices_for_date(&self, date: RelativeDate) -> Result<Vec<Price>> {
+        log::info!("Getting prices for {:?} from elering", date);
         let elering_prices = EleringPriceClient::new().get_prices_for_date(date);
         if let Ok(elering_prices) = elering_prices {
             // DST transition day may have only 23 hours
@@ -34,6 +35,7 @@ impl PriceClient {
             }
         }
 
+        log::info!("Getting prices for {:?} from porssisahko.net", date);
         PorssisahkoPriceClient::new()
             .get_prices_for_date(date)
             .wrap_err("Unable to get prices from porssisahko.net API")

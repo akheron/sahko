@@ -18,6 +18,9 @@ const MAKE_TOMORROWS_SCHEDULE: (u32, u32) = (15, 5);
 
 fn main() -> Result<()> {
     let mut args = Arguments::from_env();
+    env_logger::Builder::new()
+        .filter_level(log::LevelFilter::Debug)
+        .init();
 
     let config = Config::load("config.json")?;
     let email_client = EmailClient::new(&config.email);
@@ -63,12 +66,19 @@ fn run(config: &[ScheduleConfig], email_client: &EmailClient) -> Result<()> {
         match ensure_schedule(RelativeDate::Tomorrow, &price_client, config) {
             Ok((schedule, created)) => {
                 if created {
-                    let _ = email_client
-                        .send_schedule(RelativeDate::Tomorrow.to_naive_date(), &schedule);
+                    email_client
+                        .send_schedule(RelativeDate::Tomorrow.to_naive_date(), &schedule)
+                        .unwrap_or_else(|error| {
+                            log::error!("Failed to send schedule: {}", error);
+                        });
                 }
             }
             Err(error) => {
-                let _ = email_client.send_error_making_tomorrows_schedule(&error);
+                email_client
+                    .send_error_making_tomorrows_schedule(&error)
+                    .unwrap_or_else(|error| {
+                        log::error!("Failed to send schedule creation error: {}", error);
+                    });
             }
         }
     }
@@ -108,6 +118,7 @@ fn ensure_schedule(
     if let Some(schedule) = Schedule::load_for_date(date.to_naive_date()) {
         Ok((schedule, false))
     } else {
+        log::info!("Getting prices for {}", date.to_naive_date());
         let prices = client.get_prices_for_date(date)?;
         // DST change day may only have 23 entries
         if prices.len() < 23 {
