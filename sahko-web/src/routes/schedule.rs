@@ -139,7 +139,7 @@ impl ScheduleModel {
                                 hour: hour.format("%H").to_string(),
                                 on,
                                 past: hour < current_hour,
-                                price: schedule.price_for_hour(hour).unwrap(),
+                                price: schedule.avg_price_for_hour(hour).unwrap(),
                             }
                         })
                         .collect(),

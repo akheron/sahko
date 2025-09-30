@@ -15,25 +15,48 @@ pub struct PinSchedule {
 
 impl PinSchedule {
     pub fn compute(config: &ScheduleConfig, prices: &[Price]) -> Self {
-        // Filter out prices over `high_limit`
-        let mut candidate_prices: Vec<Price> = prices
-            .iter()
-            .copied()
-            .filter(|price| {
-                if let Some(limit) = config.high_limit {
-                    price.price < limit
+        // Average hourly prices over each hour. Assumes that prices are in order.
+        let mut hour_averages: Vec<Price> = Vec::new();
+        let mut count = 0;
+        for price in prices {
+            if count == 0 {
+                hour_averages.push(price.clone());
+                count = 1;
+            } else {
+                let last_price = hour_averages.last_mut().unwrap();
+                if last_price.validity.hour() == price.validity.hour() {
+                    last_price.price += price.price;
+                    count += 1;
                 } else {
-                    true
+                    last_price.price /= count as f64;
+                    hour_averages.push(Price {
+                        // Use start of hour as validity just to be sure
+                        validity: price.validity.with_minute(0).unwrap(),
+                        price: price.price,
+                    });
+                    count = 1;
                 }
-            })
-            .collect();
+            }
+        }
+        if let Some(last_price) = hour_averages.last_mut() {
+            last_price.price /= count as f64;
+        }
+
+        // Filter out prices over `high_limit`
+        hour_averages.retain(|price| {
+            if let Some(limit) = config.high_limit {
+                price.price < limit
+            } else {
+                true
+            }
+        });
 
         // Sort by price
-        candidate_prices.sort_by(|a, b| a.price.partial_cmp(&b.price).unwrap());
+        hour_averages.sort_by(|a, b| a.price.partial_cmp(&b.price).unwrap());
 
         // Take all prices less than or equal to `low_limit`
         let (mut result, mut others): (Vec<Price>, Vec<Price>) =
-            candidate_prices.iter().copied().partition(|price| {
+            hour_averages.iter().copied().partition(|price| {
                 if let Some(limit) = config.low_limit {
                     price.price <= limit
                 } else {
@@ -113,7 +136,7 @@ impl PinSchedule {
         if num_hours == 0 {
             0.0
         } else {
-            prices
+            let selected_prices = prices
                 .iter()
                 .filter(|price| {
                     let is_on = self.on_hours.contains(&price.validity);
@@ -124,8 +147,9 @@ impl PinSchedule {
                     }
                 })
                 .map(|price| price.price)
-                .sum::<f64>()
-                / num_hours as f64
+                .collect::<Vec<_>>();
+
+            selected_prices.iter().sum::<f64>() / selected_prices.len() as f64
         }
     }
 }
@@ -148,14 +172,23 @@ impl Schedule {
     }
 
     pub fn avg_price(&self) -> f64 {
+        // This assumes that all price spans are equal length and cover the whole day
         self.prices.iter().map(|price| price.price).sum::<f64>() / self.prices.len() as f64
     }
 
-    pub fn price_for_hour<Tz: TimeZone>(&self, hour: DateTime<Tz>) -> Option<f64> {
-        self.prices
+    pub fn avg_price_for_hour<Tz: TimeZone>(&self, hour: DateTime<Tz>) -> Option<f64> {
+        let next_hour = hour.clone() + Duration::hours(1);
+        let hour_prices = self
+            .prices
             .iter()
-            .find(|price| price.validity == hour)
+            .filter(|price| hour <= price.validity && price.validity < next_hour)
             .map(|price| price.price)
+            .collect::<Vec<_>>();
+        if hour_prices.is_empty() {
+            None
+        } else {
+            Some(hour_prices.iter().sum::<f64>() / hour_prices.len() as f64)
+        }
     }
 
     pub fn load_for_date(date: NaiveDate) -> Option<Self> {
@@ -213,7 +246,7 @@ mod tests {
         .unwrap()
     }
 
-    fn make_prices(price: f64) -> Vec<Price> {
+    fn make_hourly_prices(price: f64) -> Vec<Price> {
         (0..=23)
             .map(|hour| Price {
                 validity: hour_dt(hour),
@@ -222,29 +255,68 @@ mod tests {
             .collect()
     }
 
+    fn quarter_dt(hour: u32, quarter: u32) -> DateTime<FixedOffset> {
+        TZ.from_local_datetime(&NaiveDateTime::new(
+            *TODAY,
+            NaiveTime::from_hms_opt(hour, 15 * quarter, 0).unwrap(),
+        ))
+        .unwrap()
+    }
+
+    fn make_quarterly_prices(price: f64) -> Vec<Price> {
+        (0..=23)
+            .flat_map(|hour| (0..=3).map(move |quarter| (hour, quarter)))
+            .map(|(hour, quarter)| Price {
+                validity: quarter_dt(hour, quarter),
+                price,
+            })
+            .collect()
+    }
+
     #[test]
-    fn test_basic() {
-        let prices = make_prices(0.0);
+    fn test_basic_hourly() {
+        let prices = make_hourly_prices(0.0);
 
         let schedule = PinSchedule::compute(&DEFAULT_CONFIG, &prices);
         assert_eq!(schedule.on_hours, vec![hour_dt(0)]);
     }
 
     #[test]
-    fn test_low_limit() {
+    fn test_basic_quarterly() {
+        let prices = make_quarterly_prices(0.0);
+
+        let schedule = PinSchedule::compute(&DEFAULT_CONFIG, &prices);
+        assert_eq!(schedule.on_hours, vec![hour_dt(0)]);
+    }
+
+    #[test]
+    fn test_low_limit_hourly() {
         let config = ScheduleConfig {
             low_limit: Some(0.0),
             max_on_hours: 3,
             ..DEFAULT_CONFIG
         };
-        let prices = make_prices(0.0);
+        let prices = make_hourly_prices(0.0);
 
         let schedule = PinSchedule::compute(&config, &prices);
         assert_eq!(schedule.on_hours, vec![hour_dt(0), hour_dt(1), hour_dt(2)]);
     }
 
     #[test]
-    fn test_takes_lowest_prices_under_low_limit() {
+    fn test_low_limit_quarterly() {
+        let config = ScheduleConfig {
+            low_limit: Some(0.0),
+            max_on_hours: 3,
+            ..DEFAULT_CONFIG
+        };
+        let prices = make_quarterly_prices(0.0);
+
+        let schedule = PinSchedule::compute(&config, &prices);
+        assert_eq!(schedule.on_hours, vec![hour_dt(0), hour_dt(1), hour_dt(2)]);
+    }
+
+    #[test]
+    fn test_takes_lowest_prices_under_low_limit_hourly() {
         let config = ScheduleConfig {
             min_on_hours: 0,
             max_on_hours: 2,
@@ -269,7 +341,91 @@ mod tests {
                 price: -2.0,
             },
         ];
-        prices.extend(make_prices(5.0).iter().skip(4));
+        prices.extend(make_hourly_prices(5.0).iter().skip(4));
+
+        let schedule = PinSchedule::compute(&config, &prices);
+        assert_eq!(schedule.on_hours, vec![hour_dt(1), hour_dt(3)]);
+    }
+
+    #[test]
+    fn test_takes_lowest_prices_under_low_limit_quarterly() {
+        let config = ScheduleConfig {
+            min_on_hours: 0,
+            max_on_hours: 2,
+            low_limit: Some(2.0),
+            ..DEFAULT_CONFIG
+        };
+        let mut prices = vec![
+            // Hour 0: avg 1.5
+            Price {
+                validity: quarter_dt(0, 0),
+                price: 1.5,
+            },
+            Price {
+                validity: quarter_dt(0, 1),
+                price: 1.0,
+            },
+            Price {
+                validity: quarter_dt(0, 2),
+                price: 1.5,
+            },
+            Price {
+                validity: quarter_dt(0, 3),
+                price: 2.0,
+            },
+            // Hour 1: avg -1.0
+            Price {
+                validity: quarter_dt(1, 0),
+                price: -1.0,
+            },
+            Price {
+                validity: quarter_dt(1, 1),
+                price: -1.0,
+            },
+            Price {
+                validity: quarter_dt(1, 2),
+                price: 1.0,
+            },
+            Price {
+                validity: quarter_dt(1, 3),
+                price: -3.0,
+            },
+            // Hour 2: avg 1.0
+            Price {
+                validity: quarter_dt(2, 0),
+                price: 1.0,
+            },
+            Price {
+                validity: quarter_dt(2, 1),
+                price: 2.0,
+            },
+            Price {
+                validity: quarter_dt(2, 2),
+                price: 1.0,
+            },
+            Price {
+                validity: quarter_dt(2, 3),
+                price: 0.0,
+            },
+            // Hour 2: avg 0.0
+            Price {
+                validity: quarter_dt(3, 0),
+                price: 1.0,
+            },
+            Price {
+                validity: quarter_dt(3, 1),
+                price: -1.0,
+            },
+            Price {
+                validity: quarter_dt(3, 2),
+                price: 1.0,
+            },
+            Price {
+                validity: quarter_dt(3, 3),
+                price: -1.0,
+            },
+        ];
+        prices.extend(make_quarterly_prices(5.0).iter().skip(4 * 4));
 
         let schedule = PinSchedule::compute(&config, &prices);
         assert_eq!(schedule.on_hours, vec![hour_dt(1), hour_dt(3)]);
@@ -311,7 +467,7 @@ mod tests {
             },
             // <---
         ];
-        prices.extend(make_prices(5.0).iter().skip(5));
+        prices.extend(make_hourly_prices(5.0).iter().skip(5));
 
         let schedule = PinSchedule::compute(&config, &prices);
         assert_eq!(schedule.on_hours, vec![hour_dt(3), hour_dt(4)]);
